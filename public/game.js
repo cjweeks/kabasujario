@@ -44,8 +44,8 @@ function onServer() {
  * @returns {string} The value o the linear interpolation at the given point.
  */
 function interpolate(firstValue, secondValue, interpolationPoint) {
-    interpolationPoint = (Math.max(0, Math.min(1, interpolationPoint)));//.fixed(3);
-    return (firstValue + interpolationPoint * (secondValue - firstValue));//.fixed(3);
+    interpolationPoint = (Math.max(0, Math.min(1, interpolationPoint)));
+    return (firstValue + interpolationPoint * (secondValue - firstValue));
 }
 
 /**
@@ -288,7 +288,7 @@ class GameLogic {
     update(time) {
         // determine the delta time values
         if (this.previousFrameTime) {
-            this.deltaTime = ((time - this.previousFrameTime) / 1000.0); //.fixed();
+            this.deltaTime = ((time - this.previousFrameTime) / 1000.0);
         }
         else {
             this.deltaTime = 0.016; // TODO abstract this value
@@ -635,7 +635,7 @@ class ClientGameLogic extends GameLogic {
 
         // store the input along with a time and the input number for identification
         var newInput = {
-            time: this.localTime,//.fixed(3),
+            time: this.localTime,
             direction: mouseDirection,
             number: this.inputNumber
         };
@@ -690,13 +690,13 @@ class ClientGameLogic extends GameLogic {
             // position of the current time with respect to both chosen times
             this.targetTime = targetUpdate.time;
             var difference = this.targetTime - currentTime;
-            var maxDifference = (targetUpdate.time - previousUpdate.time);//.fixed(3);
+            var maxDifference = (targetUpdate.time - previousUpdate.time);
             var interpolationPoint = 0;
 
             // set the interpolation point to the ratio of the actual difference to the max difference
             // if the max difference is zero, we simply keep the interpolation point at zero
             if (maxDifference != 0) {
-                interpolationPoint = (difference / maxDifference);//.fixed(3);
+                interpolationPoint = (difference / maxDifference);
             }
 
             if (interpolationPoint > 1) {
