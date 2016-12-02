@@ -1,5 +1,5 @@
 
-var GameObjects = require('./game.js');
+var GameObjects = require('./public/game.js');
 var ServerGameLogic = GameObjects.ServerGameLogic;
 var Player = GameObjects.Player;
 var ServerPlayer = GameObjects.ServerPlayer;

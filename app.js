@@ -4,7 +4,7 @@ var app = express();
 var server = http.createServer(app);
 var io = require('socket.io')(server);
 const uuid = require('uuid/v1');
-var gameServer = require('./public/game-server.js');
+var gameServer = require('./game-server.js');
 var port = process.env.PORT || 8080;
 
 // handle express logic
