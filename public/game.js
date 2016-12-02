@@ -4,18 +4,20 @@
 // The maximum number of players that may exist in one gameLogic gameLogic
 const MAX_PLAYERS_PER_GAME = 10;
 
-// The refresh rate of the standard timers
+// The refresh rate of the standard timers (in ms)
 const TIMER_PERIOD = 4;
 
 // The refresh period of physics simulations (in ms)
 const PHYSICS_UPDATE_PERIOD = 15;
 
-// The period at which to perform pings of the server
+// The period at which to perform pings of the server (in ms)
 const PING_PERIOD = 1000;
 
-// The expected frame rate of the simulation
+// The expected frame rate of the simulation (in fps)
 const FPS = 60; // TODO change this
 
+
+// TODO remove this (?) currently not used
 const MAX_DIRECTION_MAGNITUDE = 100;
 
 
@@ -31,137 +33,6 @@ function onServer() {
 
 /*********************************** Vector ***********************************/
 
-// /**
-//  * Calculates the linear interpolation between the given valuesat the
-//  * specified interpolation point.
-//  * @param firstValue The first value.
-//  * @param secondValue The second value.
-//  * @param interpolationPoint A number between 0 and 1 that indicates
-//  * the point at which the interpolation is given. If this value is 0,
-//  * 'firstValue' is returned; if thi value is 1, 'secondValue' is returned.
-//  * @returns {string} The value o the linear interpolation at the given point.
-//  */
-// function interpolate(firstValue, secondValue, interpolationPoint) {
-//     interpolationPoint = (Maidth.max(0, Math.min(1, interpolationPoint))).fixed(3);
-//     return (firstValue + interpolationPoint * (secondValue - firstValue)).fixed(3);
-// }
-//
-// /**
-//  * Simple abstraction of a two-dimensional Vector.
-//  */
-// class Vector {
-//
-//     /**
-//      * Creates a new vector.
-//      * @param x The x component of the Vector (defaults to 0).
-//      * @param y The y component of the Vector (defaults to 0).
-//      */
-//     constructor(x, y) {
-//         this.x = x || 0;
-//         this.y = y || 0;
-//     }
-//
-//     /**
-//      * Returns a new Vector corresponding to the addition of
-//      * this Vector and the given Vector.
-//      * @param v The Vector to add this Vector to.
-//      * @returns {Vector} The result of Vector addition.
-//      */
-//     add(v) {
-//         return new Vector(this.x + v.x, this.y + v.y);
-//     };
-//
-//     /**
-//      * Returns a new Vector corresponding to the subtraction of
-//      * this Vector and the given Vector.
-//      * @param v The vector to subtract from this vector.
-//      * @returns {Vector} The result of Vector subtraction.
-//      */
-//     subtract(v) {
-//         return this.add(v.scalarMultiply(-1));
-//     }
-//
-//     /**
-//      * Returns the euclidean magnitude of this Vector.
-//      * @returns {number}
-//      */
-//     magnitude() {
-//         return Math.sqrt((this.x)^2 + (this.y)^2);
-//     };
-//
-//     /**
-//      * Returns the unit Vector with the sample direction
-//      * as this Vector.
-//      * @returns {Vector}
-//      */
-//     unitVector() {
-//         const magnitude = this.magnitude();
-//         if (magnitude == 0) {
-//             return new Vector();
-//         }
-//         return new Vector(this.x / magnitude, this.y / magnitude);
-//     };
-//
-//     /**
-//      * Returns the result of multiplication of this
-//      * Vector and the given scalar.
-//      * @param scalar The scalar to multiply this Vector by.
-//      * @returns {Vector} The new scaled Vector after multiplication.
-//      */
-//     scalarMultiply(scalar) {
-//         return new Vector(this.x * scalar,this.y * scalar);
-//     };
-//
-//     /**
-//      * Sets the value of this vector to that of the given vector.
-//      * @param v the vector to obain values from.
-//      */
-//     set(v) {
-//         this.x = v.x;
-//         this.y = v.y;
-//     }
-//
-//     /**
-//      * Returns true if this vector is teh zero vector
-//      * (both x and y components are zero).
-//      * @returns {boolean}
-//      */
-//     isZero() {
-//         return this.x == 0 && this.y == 0;
-//     }
-//
-//     /**
-//      * Returns the linear interpolation between this vector
-//      * and the given vector.
-//      * @param v The vector to interpolate this with.
-//      * @param interpolationPoint The point at which to perform
-//      * the interpolation (see interpolate() for more information)
-//      * @returns {Vector} A new vector; the reult of the interpolation.
-//      */
-//     interpolate(v, interpolationPoint) {
-//         return new Vector(
-//             interpolate(this.x, v.x, interpolationPoint),
-//             interpolate(this.y, v.y, interpolationPoint)
-//         );
-//     }
-//
-//     /**
-//      * Returns a new vector from an arbitrary object having
-//      * both x and y properties.
-//      * @param object the object to create the vector from.
-//      * @returns {Vector} A vector with the same components
-//      * as the input object.
-//      */
-//     static generate(object) {
-//         return new Vector(object.x, object.y);
-//     }
-// }
-
-
-
-
-/*********************************** Static Vector ***********************************/
-
 /**
  * Calculates the linear interpolation between the given valuesat the
  * specified interpolation point.
@@ -176,132 +47,6 @@ function interpolate(firstValue, secondValue, interpolationPoint) {
     interpolationPoint = (Math.max(0, Math.min(1, interpolationPoint)));//.fixed(3);
     return (firstValue + interpolationPoint * (secondValue - firstValue));//.fixed(3);
 }
-
-// /**
-//  * Simple abstraction of a two-dimensional Vector.
-//  */
-// class Vector {
-//
-//     /**
-//      * Adds the two given vectors.
-//      * @param u the first vector.
-//      * @param v The second vector to add.
-//      * @returns {Vector} A new vector, the result of u + v.
-//      */
-//     static add(u, v) {
-//         return {
-//             x: u.x + v.x,
-//             y: u.y + v.y
-//         };
-//     };
-//
-//     /**
-//      * Subtracts the two given vectors.
-//      * @param u the first vector.
-//      * @param v The second vector to subtract.
-//      * @returns {Vector} A new vector, the result of u - v.
-//      */
-//     static subtract(u, v) {
-//         return Vector.add(u, Vector.scalarMultiply(v, -1));
-//     }
-//
-//     /**
-//      * Returns the euclidean magnitude of the given vector.
-//      * @param v the vector to measure.
-//      * @returns {number}
-//      */
-//     static magnitude(v) {
-//         // console.log('mag: ' + Math.sqrt(Math.pow(v.x, 2) + Math.pow(v.y, 2)));
-//         return Math.sqrt(Math.pow(v.x, 2) + Math.pow(v.y, 2))
-//     };
-//
-//     /**
-//      * Returns the unit Vector with the sample direction
-//      * as the given vector.
-//      * @returns {Vector}
-//      */
-//     static unitVector(v) {
-//         const magnitude = Vector.magnitude(v);
-//         if (magnitude == 0) {
-//             return {
-//                 x: 0,
-//                 y: 0
-//             }
-//         }
-//         return {
-//             x: v.x / magnitude,
-//             y: v.y / magnitude
-//         };
-//     };
-//
-//     /**
-//      * Returns the result of multiplication of the given
-//      * vector and the given scalar.
-//      * @param v The vector to multiply.
-//      * @param scalar The scalar to multiply this Vector by.
-//      * @returns {Vector} The new scaled vector after multiplication.
-//      */
-//     static scalarMultiply(v, scalar) {
-//         return {
-//             x: v.x * scalar,
-//             y: v.y * scalar
-//         };
-//     };
-//
-//
-//     /**
-//      * Returns true if the given vector is teh zero vector
-//      * (both x and y components are zero).
-//      * @returns {boolean}
-//      */
-//     static isZero(v) {
-//         return v.x == 0 && v.y == 0;
-//     }
-//
-//     /**
-//      * Returns the linear interpolation between this vector
-//      * and the given vector.
-//      * @param u The starting vector.
-//      * @param v The ending vector.
-//      * @param interpolationPoint The point at which to perform
-//      * the interpolation (see interpolate() for more information)
-//      * @returns {Vector} A new vector; the result of the interpolation.
-//      */
-//     static interpolate(u, v, interpolationPoint) {
-//         return {
-//             x: interpolate(u.x, v.x, interpolationPoint),
-//             y: interpolate(u.y, v.y, interpolationPoint)
-//         };
-//     }
-//
-//     /**
-//      * Returns a new vector from an arbitrary object having
-//      * both x and y properties.
-//      * @param object the object to create the vector from.
-//      * @returns {Vector} A vector with the same components
-//      * as the input object.
-//      */
-//     static generate(object) {
-//         return {
-//             x: object.x,
-//             y: object.y
-//         };
-//     }
-//
-//     static construct(x, y) {
-//         x = x|| 0;
-//         y = y || 0;
-//         return {
-//             x: x,
-//             y: y
-//         };
-//     }
-//
-//     static print(v) {
-//         return '(' + v.x + ', ' + v.y + ')';
-//     }
-// }
-
 
 /**
  * Simple functions acting on a two-dimensional Vector.
