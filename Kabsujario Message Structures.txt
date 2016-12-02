@@ -1,0 +1,35 @@
+Kabsujario Message Structures
+
+
+server-update {
+	time: --,
+	players: {id: player, ...}
+}
+
+
+ping {
+	time: --
+}
+
+
+connected {
+	time: --,
+	id: --, // the client player's id
+	players: {id: player, ...}
+}
+
+input {
+	time: --,
+	direction: Vector(), // mouse direction
+	number: -- // input number
+}
+
+
+player-aded {
+	playerId: --,
+	player: {}
+}
+
+player-removed {
+	playerId: --
+}

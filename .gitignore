@@ -1,3 +1,7 @@
+.idea/
+*-compiled.js
+*.js.map
+
 # Logs
 logs
 *.log
