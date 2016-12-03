@@ -18,17 +18,23 @@ function getMousePosition(canvas, event) {
     );
 }
 
-var gameLogic = {};
-
 window.onload = function () {
 
+    // obtain a reference to the canvas
+    var canvas = document.getElementById('canvas');
+
+    // create the camera object for the game
+    var camera = new Camera(0, 0, canvas.width, canvas.height, world.width, world.height);
+    //console.log('(' + canvas.width + ', ' + canvas.height + ')');
+    //console.log(camera);
+
     // create the game logic object to simulate the client-side game
-    gameLogic = new ClientGameLogic();
+    var gameLogic = new ClientGameLogic(camera);
 
     // create a reference to the canvas and reset the dimensions
-    gameLogic.viewport = document.getElementById('canvas');
-    gameLogic.viewport.width = world.width;
-    gameLogic.viewport.height = world.height;
+    gameLogic.viewport = canvas;
+    // gameLogic.viewport.width = world.width;
+    // gameLogic.viewport.height = world.height;
 
     // create a reference to the rendering context for drawing
     gameLogic.context = gameLogic.viewport.getContext('2d');

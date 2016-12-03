@@ -4,11 +4,17 @@
     <meta charset="utf-8">
 	<title>Kabasujario</title>
 
+    <!-- get jquery -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
     <!-- load the stylesheet -->
 	<link href="public/index.css" media="screen" rel="stylesheet" type="text/css">
 
     <!-- load socket.io -->
-    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+
+    <!-- load the camera script -->
+    <script type="text/javascript" src="public/camera.js"></script>
 
 	<!-- load the game logic code (the client side uses both Player and ClientGameLogic -->
 	<script type="text/javascript" src="public/game.js"></script>
@@ -19,7 +25,7 @@
 </head>
 
 <body>
-<canvas id="canvas" height=500 width=900></canvas>
+<canvas id="canvas" height=200 width=200></canvas>
 </body>
 
 </html>

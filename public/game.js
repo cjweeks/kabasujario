@@ -16,10 +16,8 @@ const PING_PERIOD = 1000;
 // The expected frame rate of the simulation (in fps)
 const FPS = 60; // TODO change this
 
-
 // TODO remove this (?) currently not used
 const MAX_DIRECTION_MAGNITUDE = 100;
-
 
 
 /**
@@ -53,7 +51,7 @@ function interpolate(firstValue, secondValue, interpolationPoint) {
  * A vector in this case is any object with numerical
  * properties 'x' and 'y'.
  */
-var vector = {
+const vector = {
 
     /**
      * Adds the two given vectors.
@@ -190,9 +188,14 @@ var vector = {
 
 /*********************************** Game Logic ***********************************/
 
+// const world = {
+//     width: 800,
+//     height: 500
+// };
+
 const world = {
-    width: 800,
-    height: 500
+    width: 900,
+    height: 900
 };
 
 
@@ -354,7 +357,7 @@ class GameLogic {
 class ServerGameLogic extends GameLogic {
     constructor(game) {
         super();
-        this.GameObjects = game;
+        this.game = game;
         if (this.game) {
             // add the current players from the game object
             for (var playerId in this.game.playerSockets) {
@@ -444,7 +447,11 @@ class ServerGameLogic extends GameLogic {
 
 // TODO note that the inputs are cleared on the client side in 'processServerUpdatePosition'
 class ClientGameLogic extends GameLogic {
-    constructor() {
+    /**
+     * Creates a new client game logic object.
+     * @param camera the camera object used for tracking.
+     */
+    constructor(camera) {
         super();
 
         // the id of the player associated with this client instance
@@ -456,13 +463,16 @@ class ClientGameLogic extends GameLogic {
         // TODO remove
         this.predictMovement = true;
 
+        // the camera object that will allow us to draw the player at the center of the screen
+        this.camera = camera;
+        console.log(this.camera);
+
         // a reference to the two-dimensional context of the canvas ti render on
         this.context = {};
 
         // a vector containing the mouse direction relative to to the client player's position
         this.mousePosition = vector.construct();
-        // TODO clean this up!
-        // assign values for interpolation
+
         // the current input number; used to identify inputs recorded and sent to the server
         this.inputNumber = 0;
 
@@ -474,10 +484,11 @@ class ClientGameLogic extends GameLogic {
         this.netPing = 0.001;
         this.previousPingTime = 0.001;
 
-        /**
-         * The amount of time (in ms) the other players lag behind the real server time in the client's rendering.
-         * This is done to allow for smooth interpolation of other players' movements.
-         */
+
+
+
+        // the amount of time (in ms) the other players lag behind the real server time in the client's rendering
+        // this is done to allow for smooth interpolation of other players' movements
         this.clientServerOffset = 100;
 
         // the length (in seconds) of the server history buffer that the client keeps in 'serverUpdates'
@@ -500,8 +511,10 @@ class ClientGameLogic extends GameLogic {
         // connect to the server using socket.io
         this.connect();
 
+
         // start the ping timer to record latency
         this.startPingTimer();
+
     }
 
 
@@ -512,6 +525,7 @@ class ClientGameLogic extends GameLogic {
      * position, and finally re-draws everything.
      */
     update(time) {
+
         // perform server / client common updates
         super.update(time);
 
@@ -527,6 +541,12 @@ class ClientGameLogic extends GameLogic {
         // update the client player's position if movement prediction is enabled
         this.updateLocalPosition();
 
+        // update the camera object to reflect new positions
+        this.camera.update();
+        //console.log(this.camera);
+        if (this.clientPlayer) {
+            //console.log('(' + this.camera.xView + ', ' + this.camera.yView + ') : ' + vector.print(this.clientPlayer.position));
+        }
         // draw every player
         this.drawPlayers();
 
@@ -578,7 +598,7 @@ class ClientGameLogic extends GameLogic {
     drawPlayers() {
         for (var playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
-                Player.draw(this.players[playerId], this.context);
+                Player.draw(this.players[playerId], this.context, this.camera);
             }
         }
     }
@@ -608,7 +628,15 @@ class ClientGameLogic extends GameLogic {
         }
 
         // obtain the direction of movement by subtracting the mouse position from the player's position
-        var mouseVector = vector.subtract(this.mousePosition, this.clientPlayer.position);
+        // this is the old way, before the camera was introduced
+        // var mouseVector = vector.subtract(this.mousePosition, this.clientPlayer.position);
+        var mouseVector = vector.subtract(
+            this.mousePosition,
+            vector.construct(
+                this.clientPlayer.position.x - this.camera.xView,
+                this.clientPlayer.position.y - this.camera.yView
+            )
+        );
 
         // TODO fix the below logic (do we want scalable velocity?)
 
@@ -657,11 +685,8 @@ class ClientGameLogic extends GameLogic {
 
         // find a set of updates which 'contain' the current time
         for(var i = 0; i < this.serverUpdates.length - 1; ++i) {
-
             var currentUpdate = this.serverUpdates[i];
             var nextUpdate = this.serverUpdates[i + 1];
-
-            //Compare our point in time with the server times we have
             if(currentTime > currentUpdate.time && currentTime <= nextUpdate.time) {
                 targetUpdate = nextUpdate;
                 previousUpdate = currentUpdate;
@@ -759,9 +784,7 @@ class ClientGameLogic extends GameLogic {
 
         // handle the reception of a ping
         this.playerSocket.on('manual-ping', this.onPing.bind(this));
-
     }
-
 
     /**
      * Responds to a player added event by adding the new
@@ -794,13 +817,17 @@ class ClientGameLogic extends GameLogic {
         this.clientPlayerId = data.clientPlayerId;
         this.players = data.players;
 
+
         // create an actual player object for the client player
         this.players[this.clientPlayerId] = Player.lightCopy(this.players[this.clientPlayerId]);
 
         // assign the client player to the player identified by the client player id
         this.clientPlayer = this.players[this.clientPlayerId];
 
-        // this.players[this.clientPlayerId] = Player.lightCopy(this.players[this.clientPlayerId]);
+        // set the camera to track the client player
+        this.camera.follow(this.clientPlayer, this.viewport.width / 2, this.viewport.height / 2);
+
+        // obtain the server time based on ping data
         this.serverTime = data.time + this.netLatency;
     }
 
@@ -835,7 +862,7 @@ class ClientGameLogic extends GameLogic {
         this.serverUpdates.push(update);
 
         // if the string of updates are too long, remove the least recent
-        if(this.serverUpdates.length >= (FPS * this.bufferLength)) { // TODO fix numerical stupidity
+        if(this.serverUpdates.length >= (FPS * this.bufferLength)) {
             this.serverUpdates.splice(0,1);
         }
 
@@ -921,15 +948,19 @@ class Player {
     }
 
     /**
-     * Draws the player in the given context.
+     * Draws the given player.
+     * @param player The player object to draw.
+     * @param context The context in which to draw.
+     * @param camera the camera object used for offsetting
+     * the players position to reflect a centered client player.
      */
-    static draw(player, context) {
+    static draw(player, context, camera) {
         context.fillStyle = player.color;
         context.fillRect(
-            player.position.x - player.size.x / 2,
-            player.position.y - player.size.y / 2,
-            player.size.x + player.size.x / 2,
-            player.size.y + player.size.y / 2
+            player.position.x - player.size.x / 2 - camera.xView,
+            player.position.y - player.size.y / 2 - camera.yView,
+            player.size.x,
+            player.size.y
         );
     }
 
@@ -966,102 +997,12 @@ class ServerPlayer extends Player {
     constructor(game, playerSocket) {
         super();
         this.playerSocket = playerSocket;
-        this.GameObjects = game;
+        this.game = game;
     }
 }
 
 
-/*********************************** Camera ***********************************/
-
-// possibles axis to move the camera
-var AXIS = {
-    NONE: "none",
-    HORIZONTAL: "horizontal",
-    VERTICAL: "vertical",
-    BOTH: "both"
-};
-
-
-class Camera {
-    constructor(xView, yView, canvasWidth, canvasHeight, worldWidth, worldHeight) {
-        // position of camera (left-top coordinate)
-        this.xView = xView || 0;
-        this.yView = yView || 0;
-
-        // distance from target object to border before camera starts move
-        this.xDeadZone = 0; // min distance to horizontal borders
-        this.yDeadZone = 0; // min distance to vertical borders
-
-        // viewport dimensions
-        this.wView = canvasWidth;
-        this.hView = canvasHeight;
-
-        // allow camera to move in vertical and horizontal axis
-        this.axis = AXIS.BOTH;
-
-        // object that should be followed
-        this.target = null;
-
-        // rectangle that represents the viewport
-        this.viewportRect = new Game.Rectangle(this.xView, this.yView, this.wView, this.hView);
-
-        // rectangle that represents the world's boundary (room's boundary)
-        this.worldRect = new Game.Rectangle(0, 0, worldWidth, worldHeight);
-
-    }
-
-    // gameObject needs to have "x" and "y" properties (as world(or room) position)
-    follow(gameObject, xDeadZone, yDeadZone) {
-        this.target = gameObject;
-        this.xDeadZone = xDeadZone;
-        this.yDeadZone = yDeadZone;
-    };
-
-    update() {
-        // keep following the target
-        if(this.target != null) {
-            if(this.axis == AXIS.HORIZONTAL || this.axis == AXIS.BOTH) {
-                // moves camera on horizontal axis based on followed object position
-                if(this.target.x - this.xView  + this.xDeadZone > this.wView)
-                    this.xView = this.target.x - (this.wView - this.xDeadZone);
-                else if(this.target.x  - this.xDeadZone < this.xView)
-                    this.xView = this.target.x  - this.xDeadZone;
-
-            }
-            if(this.axis == AXIS.VERTICAL || this.axis == AXIS.BOTH) {
-                // moves camera on vertical axis based on target object's position
-                if(this.target.y - this.yView + this.yDeadZone > this.hView)
-                    this.yView = this.target.y - (this.hView - this.yDeadZone);
-                else if(this.target.y - this.yDeadZone < this.yView)
-                    this.yView = this.target.y - this.yDeadZone;
-            }
-
-        }
-
-        // update viewportRect
-        this.viewportRect.set(this.xView, this.yView);
-
-        // don't let camera leaves the world's boundary
-        if(!this.viewportRect.within(this.worldRect)) {
-            if(this.viewportRect.left < this.worldRect.left) {
-                this.xView = this.worldRect.left;
-            }
-            if(this.viewportRect.top < this.worldRect.top)
-                this.yView = this.worldRect.top;
-            if(this.viewportRect.right > this.worldRect.right)
-                this.xView = this.worldRect.right - this.wView;
-            if(this.viewportRect.bottom > this.worldRect.bottom)
-                this.yView = this.worldRect.bottom - this.hView;
-        }
-
-    };
-}
-
-
-
-
-
-
+/*********************************** Initializations ***********************************/
 
 if (onServer()) {
     // export information if we are on the server
@@ -1091,7 +1032,7 @@ if (onServer()) {
             window.requestAnimationFrame = function (callback, element) {
                 var currentTime = Date.now();
                 var waitTime = Math.max(0, framePeriod - (currentTime - lastTime));
-                var id = window.setTimeout( function() {
+                var id = window.setTimeout(function() {
                     callback(currentTime + waitTime);
                 }, waitTime);
                 lastTime = currentTime + waitTime;
