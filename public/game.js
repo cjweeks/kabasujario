@@ -47,6 +47,18 @@ function interpolate(firstValue, secondValue, interpolationPoint) {
 }
 
 /**
+ * Returns a random integer in the given interval.
+ * @param min The minimum possible value (inclusive)
+ * @param max The maximum possible value (exclusive).
+ * @returns {number}
+ */
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+
+/**
  * Simple functions acting on a two-dimensional Vector.
  * A vector in this case is any object with numerical
  * properties 'x' and 'y'.
@@ -210,6 +222,7 @@ class GameLogic {
     constructor() {
 
         this.players = {};
+        this.blocks = [];
 
         // The speed at which the clients move.
         this.maxPlayerSpeed = 200;
@@ -429,6 +442,18 @@ class ServerGameLogic extends GameLogic {
     }
 
     /**
+     * Generates a set of randomly places blocks
+     * @param numBlocks The number of blocks to generate.
+     */
+    generateBlocks(numBlocks) {
+        for (var i = 0; i < numBlocks; i++) {
+            var x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
+            var y = getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
+            this.blocks.push(new Block(x, y));
+        }
+    }
+
+    /**
      * Updates the server-side players from information
      * received from the client.
      * @param playerId The player id of the client update.
@@ -477,7 +502,7 @@ class ClientGameLogic extends GameLogic {
 
             // whether or not the player's movement is enabled
             movementEnabled: true
-        }
+        };
 
         // the current input number; used to identify inputs recorded and sent to the server
         this.inputNumber = 0;
@@ -489,9 +514,6 @@ class ClientGameLogic extends GameLogic {
         this.netLatency = 0.001;
         this.netPing = 0.001;
         this.previousPingTime = 0.001;
-
-
-
 
         // the amount of time (in ms) the other players lag behind the real server time in the client's rendering
         // this is done to allow for smooth interpolation of other players' movements
@@ -517,10 +539,8 @@ class ClientGameLogic extends GameLogic {
         // connect to the server using socket.io
         this.connect();
 
-
         // start the ping timer to record latency
         this.startPingTimer();
-
     }
 
 
@@ -535,7 +555,7 @@ class ClientGameLogic extends GameLogic {
         // perform server / client common updates
         super.update(time);
 
-        // Clear the screen area
+        // clear the screen area
         this.context.clearRect(0,0, world.width, world.height);
 
         // get the client player's inputs
@@ -555,6 +575,9 @@ class ClientGameLogic extends GameLogic {
         }
         // draw every player
         this.drawPlayers();
+
+        // draw every block
+        this.drawBlocks();
 
         // schedule the next update
         this.scheduleUpdate();
@@ -606,6 +629,15 @@ class ClientGameLogic extends GameLogic {
             if (this.players.hasOwnProperty(playerId)) {
                 Player.draw(this.players[playerId], this.context, this.camera);
             }
+        }
+    }
+
+    /**
+     * Draws every block.
+     */
+    drawBlocks() {
+        for (var i = 0; i < this.blocks.length; i++) {
+            Block.draw(this.blocks[i], this.context, this.camera);
         }
     }
 
@@ -824,12 +856,14 @@ class ClientGameLogic extends GameLogic {
         this.clientPlayerId = data.clientPlayerId;
         this.players = data.players;
 
-
         // create an actual player object for the client player
         this.players[this.clientPlayerId] = Player.lightCopy(this.players[this.clientPlayerId]);
 
         // assign the client player to the player identified by the client player id
         this.clientPlayer = this.players[this.clientPlayerId];
+
+        // assign the list of blocks
+        this.blocks = data.blocks;
 
         // set the camera to track the client player
         this.camera.follow(this.clientPlayer, this.viewport.width / 2, this.viewport.height / 2);
@@ -1038,13 +1072,13 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
 // TODO comments
 const SQUARE_SIZE = 40;
 const OUTLINE_SIZE = 4;
+const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
 
 class Block {
     constructor(x, y) {
         this.position = vector.construct(x, y);
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
         this.color = 'rgb(0, 173, 238)';
-        this.outlineColor = 'rgb(255, 255, 255)';
     }
 
     static draw(block, context, camera) {
@@ -1056,7 +1090,7 @@ class Block {
             block.size.y,
             OUTLINE_SIZE,
             block.color,
-            block.outlineColor
+            SQUARE_OUTLINE_COLOR_DEFAULT
         );
     }
 }
@@ -1067,7 +1101,6 @@ class Block {
 class Player {
     constructor() {
         // initialize rendering values
-        this.outlineColor = 'rgb(255, 255, 255)';
         this.color = 'rgb(45, 48, 146)';
 
         // set initial current state values
@@ -1110,7 +1143,7 @@ class Player {
             player.size.y,
             OUTLINE_SIZE,
             player.color,
-            player.outlineColor
+            SQUARE_OUTLINE_COLOR_DEFAULT
         );
     }
 
@@ -1197,3 +1230,4 @@ if (onServer()) {
         }
     }());
 }
+

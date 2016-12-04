@@ -7,6 +7,9 @@ var ServerPlayer = GameObjects.ServerPlayer;
 const uuid = require('uuid/v1');
 
 
+const INITIAL_NUM_BLOCKS = 60;
+
+
 // define basic game container object
 var exports = module.exports = {
     games: {},
@@ -88,11 +91,12 @@ class Game {
      * Creates a new game object with a unique
      * gameId and a new game logic object.
      */
-    constructor() {
+    constructor(numBlocks) {
         this.gameId = uuid();
         this.playerSockets = {};
         this.numPlayers = 0;
         this.gameLogic = new ServerGameLogic(this);
+        this.gameLogic.generateBlocks(numBlocks)
     }
 
     /**
@@ -151,7 +155,7 @@ class Game {
 exports.createGame = function(playerSocket) {
 
     // create a new gameLogic object and add it to the list
-    var game = new Game();
+    var game = new Game(INITIAL_NUM_BLOCKS);
     exports.addGame(game);
 
     // add the player to the new game
@@ -223,7 +227,8 @@ exports.findGame = function(playerSocket) {
 
     playerSocket.emit('connected', {
         clientPlayerId: playerSocket.clientPlayerId,
+        serverTime: game.gameLogic.serverTime,
         players: playersLightCopy,
-        serverTime: game.gameLogic.serverTime
+        blocks: game.gameLogic.blocks
     });
 };
