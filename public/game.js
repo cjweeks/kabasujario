@@ -194,8 +194,8 @@ const vector = {
 // };
 
 const world = {
-    width: 900,
-    height: 900
+    width: 4000,
+    height: 4000
 };
 
 
@@ -212,7 +212,7 @@ class GameLogic {
         this.players = {};
 
         // The speed at which the clients move.
-        this.maxPlayerSpeed = 100;
+        this.maxPlayerSpeed = 200;
 
         //Set up some physics integration values
         this.physicsDeltaTime = 0.0001;
@@ -470,8 +470,14 @@ class ClientGameLogic extends GameLogic {
         // a reference to the two-dimensional context of the canvas ti render on
         this.context = {};
 
-        // a vector containing the mouse direction relative to to the client player's position
-        this.mousePosition = vector.construct();
+        // collection of the various client inputs based on the keyboard and mouse
+        this.clientState = {
+            // a vector containing the mouse direction relative to to the client player's position
+            mousePosition: vector.construct(),
+
+            // whether or not the player's movement is enabled
+            movementEnabled: true
+        }
 
         // the current input number; used to identify inputs recorded and sent to the server
         this.inputNumber = 0;
@@ -631,7 +637,7 @@ class ClientGameLogic extends GameLogic {
         // this is the old way, before the camera was introduced
         // var mouseVector = vector.subtract(this.mousePosition, this.clientPlayer.position);
         var mouseVector = vector.subtract(
-            this.mousePosition,
+            this.clientState.mousePosition,
             vector.construct(
                 this.clientPlayer.position.x - this.camera.xView,
                 this.clientPlayer.position.y - this.camera.yView
@@ -646,8 +652,9 @@ class ClientGameLogic extends GameLogic {
         if (vector.magnitude(mouseDirection) > 1) {
             //mouseDirection = Vector.unitVector(mouseDirection);
         }
-        // if the player's block is close enough to the mouse, interpret that as a direction of (0, 0)
-        if (vector.magnitude(mouseDirection) < SQUARE_SIZE / 2) {
+        // if the player's block is close enough to the mouse or if the player's movement is not enabled,
+        // interpret that as a direction of (0, 0)
+        if (vector.magnitude(mouseDirection) < SQUARE_SIZE / 2 || !this.clientState.movementEnabled) {
             mouseDirection = vector.construct();
         }
 
@@ -915,17 +922,157 @@ class ClientGameLogic extends GameLogic {
     }
 }
 
+/*********************************** Drawing Functions ***********************************/
+
+// TODO comments
+function trapezoid(context, color, x1, y1, x2, y2, x3, y3, x4, y4){
+    context.beginPath();
+    context.moveTo(x1,y1);
+    context.lineTo(x2,y2);
+    context.lineTo(x3,y3);
+    context.lineTo(x4,y4);
+    context.closePath();
+    context.fillStyle = color;
+    context.fill();
+}
+
+// TODO comments
+function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topColor, rightColor, bottomColor, leftColor){
+
+    rightColor = rightColor || topColor;
+    bottomColor = bottomColor || topColor;
+    leftColor = leftColor || topColor;
+
+    context.lineWidth = lineWidth;
+    // use existing fillStyle if fillStyle is not supplied
+    fillColor = fillColor || context.fillStyle;
+
+    // use existing strokeStyle if any strokeStyle is not supplied
+    var strokeStyle = context.strokeStyle;
+    topColor = topColor || strokeStyle;
+    rightColor = rightColor || strokeStyle;
+    bottomColor = bottomColor || strokeStyle;
+    leftColor = leftColor || strokeStyle;
+
+    // context will be modified, so save it
+    context.save();
+
+    // miter the lines
+    context.lineJoin = "miter";
+
+    // context lines are always drawn half-in/half-out
+    // so context.lineWidth/2 is used a lot
+    var lw = context.lineWidth / 2;
+
+    // shortcut vars for boundaries
+    var leftBoundary = x - lw;
+    var rightBoundary = x + lw;
+    var topBoundary = y - lw;
+    var bottomBoundary = y + lw;
+
+    // top
+    trapezoid(
+        context,
+        topColor,
+        leftBoundary,
+        topBoundary,
+        rightBoundary + width,
+        topBoundary,
+        leftBoundary + width,
+        bottomBoundary,
+        rightBoundary,
+        bottomBoundary
+    );
+    // right
+    trapezoid(
+        context,
+        rightColor,
+        rightBoundary + width,
+        topBoundary,
+        rightBoundary + width,
+        bottomBoundary + height,
+        leftBoundary + width,
+        topBoundary + height,
+        leftBoundary + width,
+        bottomBoundary
+    );
+    // bottom
+    trapezoid(
+        context,
+        bottomColor,
+        rightBoundary + width,
+        bottomBoundary + height,
+        leftBoundary,
+        bottomBoundary + height,
+        rightBoundary,
+        topBoundary + height,
+        leftBoundary + width,
+        topBoundary + height
+    );
+    // left
+    trapezoid(
+        context,
+        leftColor,
+        leftBoundary,
+        bottomBoundary + height,
+        leftBoundary,
+        topBoundary,
+        rightBoundary,
+        bottomBoundary,
+        rightBoundary,
+        topBoundary + height
+    );
+
+    // fill
+    context.fillStyle = fillColor;
+    context.fillRect(x, y, width, height);
+
+    // be kind -- always rewind (old vhs reference!)
+    context.restore();
+    // don't let this path leak
+    context.beginPath();
+}
+
+/*********************************** Block ***********************************/
+
+// TODO comments
+const SQUARE_SIZE = 40;
+const OUTLINE_SIZE = 4;
+
+class Block {
+    constructor(x, y) {
+        this.position = vector.construct(x, y);
+        this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
+        this.color = 'rgb(0, 173, 238)';
+        this.outlineColor = 'rgb(255, 255, 255)';
+    }
+
+    static draw(block, context, camera) {
+        drawRectangle(
+            context,
+            block.position.x - block.size.x / 2 - camera.xView,
+            block.position.y - block.size.y / 2 - camera.yView,
+            block.size.x,
+            block.size.y,
+            OUTLINE_SIZE,
+            block.color,
+            block.outlineColor
+        );
+    }
+}
+
 
 /*********************************** Player ***********************************/
 
-const SQUARE_SIZE = 8;
-
 class Player {
     constructor() {
+        // initialize rendering values
+        this.outlineColor = 'rgb(255, 255, 255)';
+        this.color = 'rgb(45, 48, 146)';
+
         // set initial current state values
         this.position = vector.construct(20, 20);
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
-        this.color = 'rgb(255,255,255)';
 
         // store the previous state of the player
         this.previousState = {
@@ -955,12 +1102,15 @@ class Player {
      * the players position to reflect a centered client player.
      */
     static draw(player, context, camera) {
-        context.fillStyle = player.color;
-        context.fillRect(
+        drawRectangle(
+            context,
             player.position.x - player.size.x / 2 - camera.xView,
             player.position.y - player.size.y / 2 - camera.yView,
             player.size.x,
-            player.size.y
+            player.size.y,
+            OUTLINE_SIZE,
+            player.color,
+            player.outlineColor
         );
     }
 
@@ -1045,6 +1195,5 @@ if (onServer()) {
                 clearTimeout(id);
             };
         }
-
     }());
 }

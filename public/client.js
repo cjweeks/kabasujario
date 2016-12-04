@@ -10,7 +10,6 @@
  * @returns {vector} The mouse position.
  */
 function getMousePosition(canvas, event) {
-
     var boundingRectangle = canvas.getBoundingClientRect();
     return vector.construct(
         (event.clientX - boundingRectangle.left) / (boundingRectangle.right - boundingRectangle.left) * canvas.width,
@@ -22,6 +21,11 @@ window.onload = function () {
 
     // obtain a reference to the canvas
     var canvas = document.getElementById('canvas');
+
+    // set the wdth of the canvas to the width of the client's screen
+    canvas.width = window.innerWidth; //document.body.clientWidth;
+    canvas.height = window.innerHeight; //document.body.clientHeight;
+    console.log(document.body.clientHeight);
 
     // create the camera object for the game
     var camera = new Camera(0, 0, canvas.width, canvas.height, world.width, world.height);
@@ -41,8 +45,16 @@ window.onload = function () {
 
     // add a mouse listener to report mouse position
     gameLogic.viewport.addEventListener('mousemove', function (event) {
-        gameLogic.mousePosition = getMousePosition(gameLogic.viewport, event);
+        gameLogic.clientState.mousePosition = getMousePosition(gameLogic.viewport, event);
     }, false);
+
+    // add key-pressed event for the space bar to toggle movement
+    $(window).keypress(function (event) {
+        if (event.keyCode === 0 || event.keyCode === 32) {
+            event.preventDefault();
+            gameLogic.clientState.movementEnabled = !gameLogic.clientState.movementEnabled;
+        }
+    });
 
     // start the client update loop
     gameLogic.update(new Date().getTime());
