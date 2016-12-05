@@ -47,7 +47,7 @@ class Rectangle {
 /*********************************** Camera ***********************************/
 
 // possibles axis to move the camera
-var AXIS = {
+const AXIS = {
     NONE: "none",
     HORIZONTAL: "horizontal",
     VERTICAL: "vertical",

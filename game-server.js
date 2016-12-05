@@ -1,17 +1,17 @@
 
-var GameObjects = require('./public/game.js');
-var ServerGameLogic = GameObjects.ServerGameLogic;
-var Player = GameObjects.Player;
-var ServerPlayer = GameObjects.ServerPlayer;
+const GameObjects = require('./public/game.js');
+const ServerGameLogic = GameObjects.ServerGameLogic;
+const Player = GameObjects.Player;
+const ServerPlayer = GameObjects.ServerPlayer;
 
 const uuid = require('uuid/v1');
 
 
-const INITIAL_NUM_BLOCKS = 60;
+const INITIAL_NUM_BLOCKS = 160;
 
 
 // define basic game container object
-var exports = module.exports = {
+const exports = module.exports = {
     games: {},
     numGames: 0,
     addGame: function (game) {
@@ -108,11 +108,11 @@ class Game {
         this.playerSockets[playerSocket.clientPlayerId] = playerSocket;
         this.numPlayers++;
         // add player to game logic object
-        var players = this.gameLogic.players;
+        const players = this.gameLogic.players;
         players[playerSocket.clientPlayerId] = new ServerPlayer(this, playerSocket);
 
         // send a player added event to each client
-        for (var playerId in players) {
+        for (let playerId in players) {
             if (playerId != playerSocket.clientPlayerId && players.hasOwnProperty(playerId)) {
                 players[playerId].playerSocket.emit('player-added', {
                     clientPlayerId: playerSocket.clientPlayerId,
@@ -155,7 +155,7 @@ class Game {
 exports.createGame = function(playerSocket) {
 
     // create a new gameLogic object and add it to the list
-    var game = new Game(INITIAL_NUM_BLOCKS);
+    let game = new Game(INITIAL_NUM_BLOCKS);
     exports.addGame(game);
 
     // add the player to the new game
@@ -175,7 +175,7 @@ exports.createGame = function(playerSocket) {
  * @param gameId The ID of the game to remove.
  */
 exports.endGame = function(gameId) {
-    var game = exports.games[gameId];
+    const game = exports.games[gameId];
     if (game) {
         exports.removeGame(gameId);
     } else {
@@ -192,14 +192,14 @@ exports.endGame = function(gameId) {
  * player who wishes to join a gameLogic.
  */
 exports.findGame = function(playerSocket) {
-    var foundGame = false;
-    var game;
+    let foundGame = false;
+    let game;
     if(exports.numGames > 0) {
         // try to find an open gameLogic
-        for (var gameId in exports.games) {
+        for (let gameId in exports.games) {
             // eliminate items in the prototype chain
             if (exports.games.hasOwnProperty(gameId)) {
-                var possibleGame = exports.games[gameId];
+                const possibleGame = exports.games[gameId];
                 // check if the current gameLogic can handle more playerSockets
                 if (possibleGame.numPlayers < GameObjects.MAX_PLAYERS_PER_GAME) {
                     foundGame = true;
@@ -218,8 +218,8 @@ exports.findGame = function(playerSocket) {
     playerSocket.game = game;
 
     // tell the player they connected, giving them their id and the list of players
-    var playersLightCopy = {};
-    for (var playerId in game.gameLogic.players) {
+    let playersLightCopy = {};
+    for (let playerId in game.gameLogic.players) {
         if (game.gameLogic.players.hasOwnProperty(playerId)) {
             playersLightCopy[playerId] = Player.lightCopy(game.gameLogic.players[playerId]);
         }

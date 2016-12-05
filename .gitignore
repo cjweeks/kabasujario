@@ -1,4 +1,8 @@
+
+# WebStorm
 .idea/
+
+# Compiled files
 *-compiled.js
 *.js.map
 

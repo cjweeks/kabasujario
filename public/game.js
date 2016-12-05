@@ -224,8 +224,13 @@ class GameLogic {
         this.players = {};
         this.blocks = [];
 
+
+        // set up movement constants
+        this.MAX_DIRECTION_MAGNITUDE = 400.0;
+        this.MAX_PLAYER_SPEED = 700;
+
         // The speed at which the clients move.
-        this.maxPlayerSpeed = 200;
+        //200;
 
         //Set up some physics integration values
         this.physicsDeltaTime = 0.0001;
@@ -256,7 +261,7 @@ class GameLogic {
             delete this.players[removePlayerId];
 
             // send a notification to each player
-            for (var playerId in this.players) {
+            for (let playerId in this.players) {
                 if (playerId != removePlayerId && this.players.hasOwnProperty(playerId)) {
                     this.players[playerId].playerSocket.emit('player-removed', {
                         clientPlayerId: removePlayerId
@@ -343,24 +348,28 @@ class GameLogic {
             console.log('NO PLAYER for id ' + this.clientPlayerId);
             return vector.construct();
         }
-        var scaledDirection = vector.construct();
+        let scaledDirection = vector.construct();
         if (player.inputs.length) {
             scaledDirection = vector.construct();
-            for (var i = 0; i < player.inputs.length; i++) {
-                var input = player.inputs[i];
+            for (let i = 0; i < player.inputs.length; i++) {
+                let input = player.inputs[i];
                 // only render inputs that have not yet been rendered
                 if (input.number > player.lastRenderedInputNumber) {
                     // add each direction as a unit vector
-                    scaledDirection = vector.add(scaledDirection, vector.unitVector(input.direction));
+                    // TODO this is a test
+                    //scaledDirection = vector.add(scaledDirection, vector.unitVector(input.direction));
+                    scaledDirection = vector.add(scaledDirection, input.direction);
                 }
             }
+
             // set the values in the player to reflect the new rendering
-            var lastInput = player.inputs[player.inputs.length - 1];
+            let lastInput = player.inputs[player.inputs.length - 1];
             player.lastInputTime = lastInput.time;
             player.lastRenderedInputNumber = lastInput.number;
         }
+        // console.log(vector.print(vector.scalarMultiply(scaledDirection, (this.MAX_PLAYER_SPEED * PHYSICS_UPDATE_PERIOD / 1000.0))));
         // return the displacement vector of the player
-        return vector.scalarMultiply(scaledDirection, (this.maxPlayerSpeed * PHYSICS_UPDATE_PERIOD / 1000.0));
+        return vector.scalarMultiply(scaledDirection, (this.MAX_PLAYER_SPEED * PHYSICS_UPDATE_PERIOD / 1000.0));
     }
 }
 
@@ -373,7 +382,7 @@ class ServerGameLogic extends GameLogic {
         this.game = game;
         if (this.game) {
             // add the current players from the game object
-            for (var playerId in this.game.playerSockets) {
+            for (let playerId in this.game.playerSockets) {
                 if (this.game.playerSockets.hasOwnProperty(playerId)) {
                     this.players[playerId] = new ServerPlayer(this, this.game.playerSockets[playerId]);
                 }
@@ -395,23 +404,23 @@ class ServerGameLogic extends GameLogic {
         //Update the state of our local clock to match the timer TODO explain
         this.serverTime = this.localTime;
 
-        // create a lught copy of each player
-        var playersLightCopy = {};
-        for (var playerId in this.players) {
+        // create a light copy of each player
+        let playersLightCopy = {};
+        for (let playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
                 playersLightCopy[playerId] = Player.lightCopy(this.players[playerId]);
             }
         }
 
         // record the state of the game at the current time
-        var state = {
+        let state = {
             players: playersLightCopy,
             time: this.serverTime
         };
         // send the recorded state to each player
-        for (var playerId in this.players) {
+        for (let playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
-                var player = this.players[playerId];
+                let player = this.players[playerId];
                 if (player.playerSocket) {
                     player.playerSocket.emit('server-update', state);
                 } else {
@@ -423,11 +432,11 @@ class ServerGameLogic extends GameLogic {
 
     updatePhysics() {
         // update player positions
-        for (var playerId in this.players) {
+        for (let playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
-                var player = this.players[playerId];
+                let player = this.players[playerId];
                 // obtain a displacement from the set of inputs provided by the player
-                var displacement = this.processDirectionInputs(player);
+                let displacement = this.processDirectionInputs(player);
 
                 player.position = vector.add(
                     player.position,
@@ -446,9 +455,9 @@ class ServerGameLogic extends GameLogic {
      * @param numBlocks The number of blocks to generate.
      */
     generateBlocks(numBlocks) {
-        for (var i = 0; i < numBlocks; i++) {
-            var x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
-            var y = getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
+        for (let i = 0; i < numBlocks; i++) {
+            let x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
+            let y = getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
             this.blocks.push(new Block(x, y));
         }
     }
@@ -460,7 +469,7 @@ class ServerGameLogic extends GameLogic {
      * @param input The input object sent to the server.
      */
     processClientUpdate(playerId, input) {
-        var player = this.players[playerId];
+        let player = this.players[playerId];
         if (!player) {
             return;
         }
@@ -508,7 +517,7 @@ class ClientGameLogic extends GameLogic {
         this.inputNumber = 0;
 
         // the amount to smooth client movement if it lags behind the server
-        this.clientSmoothing = 5;
+        this.clientSmoothing = 0.1;//5;
 
         // the net latency and ping between the client and server (initial values are placeholders)
         this.netLatency = 0.001;
@@ -604,6 +613,28 @@ class ClientGameLogic extends GameLogic {
         this.updateId = window.requestAnimationFrame(this.update.bind(this));
     }
 
+
+    // TODO comments
+    normalizeDirection(directionVector) {
+
+        // if the player's block is close enough to the mouse or if the player's movement is not enabled,
+        // interpret that as a direction of (0, 0)
+        if (vector.magnitude(directionVector) < SQUARE_SIZE / 2 || !this.clientState.movementEnabled) {
+            return vector.construct();
+        }
+
+        // scale down the direction vector by the maximum possible magnitude
+        let normalized = vector.scalarMultiply(directionVector, 1.0 / this.MAX_DIRECTION_MAGNITUDE);
+        //console.log(vector.print(normalized));
+
+        // if the resulting vector is too large, convert it into a unit vector
+        if (vector.magnitude(normalized) > 1) {
+            console.log('shrinking: ' + vector.magnitude(normalized));
+            normalized = vector.unitVector(normalized);
+        }
+
+        return normalized;
+    }
     // TODO I think this doesn't have a purpose anymore after the recent updates
     updateLocalPosition() {
         if(this.predictMovement) {
@@ -611,10 +642,10 @@ class ClientGameLogic extends GameLogic {
                 return;
             }
             // determine the time since the last update
-            var time = (this.localTime - this.clientPlayer.stateTime) / this.physicsDeltaTime;
+            let time = (this.localTime - this.clientPlayer.stateTime) / this.physicsDeltaTime;
 
             //Then store the states for clarity,
-            var previousPosition = this.clientPlayer.previousState.position;
+            let previousPosition = this.clientPlayer.previousState.position;
 
             GameLogic.checkCollisions(this.clientPlayer);
         }
@@ -625,7 +656,7 @@ class ClientGameLogic extends GameLogic {
      * Draws each player.
      */
     drawPlayers() {
-        for (var playerId in this.players) {
+        for (let playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
                 Player.draw(this.players[playerId], this.context, this.camera);
             }
@@ -636,7 +667,7 @@ class ClientGameLogic extends GameLogic {
      * Draws every block.
      */
     drawBlocks() {
-        for (var i = 0; i < this.blocks.length; i++) {
+        for (let i = 0; i < this.blocks.length; i++) {
             Block.draw(this.blocks[i], this.context, this.camera);
         }
     }
@@ -651,7 +682,7 @@ class ClientGameLogic extends GameLogic {
 
         // save the current state of the client player, and handle new inputs to determine a new position
         this.clientPlayer.previousState.position = vector.generate(this.clientPlayer.position);
-        var displacement = this.processDirectionInputs(this.clientPlayer);
+        let displacement = this.processDirectionInputs(this.clientPlayer);
         this.clientPlayer.position = vector.add(this.clientPlayer.position, displacement);
         this.clientPlayer.stateTime = this.localTime;
     }
@@ -666,9 +697,7 @@ class ClientGameLogic extends GameLogic {
         }
 
         // obtain the direction of movement by subtracting the mouse position from the player's position
-        // this is the old way, before the camera was introduced
-        // var mouseVector = vector.subtract(this.mousePosition, this.clientPlayer.position);
-        var mouseVector = vector.subtract(
+        let mouseDirection = vector.subtract(
             this.clientState.mousePosition,
             vector.construct(
                 this.clientPlayer.position.x - this.camera.xView,
@@ -676,27 +705,16 @@ class ClientGameLogic extends GameLogic {
             )
         );
 
-        // TODO fix the below logic (do we want scalable velocity?)
-
-        // turn this vector into a vector between 0 and 1 magnitude
-        var mouseDirection = vector.scalarMultiply(mouseVector, 1);
-
-        if (vector.magnitude(mouseDirection) > 1) {
-            //mouseDirection = Vector.unitVector(mouseDirection);
-        }
-        // if the player's block is close enough to the mouse or if the player's movement is not enabled,
-        // interpret that as a direction of (0, 0)
-        if (vector.magnitude(mouseDirection) < SQUARE_SIZE / 2 || !this.clientState.movementEnabled) {
-            mouseDirection = vector.construct();
-        }
+        // normalize the mouse direction using various scaling methods
+        let normalizedDirection = this.normalizeDirection(mouseDirection);
 
         // increase the input number before adding the next input
         this.inputNumber++;
 
         // store the input along with a time and the input number for identification
-        var newInput = {
+        let newInput = {
             time: this.localTime,
-            direction: mouseDirection,
+            direction: normalizedDirection,
             number: this.inputNumber
         };
 
@@ -718,14 +736,14 @@ class ClientGameLogic extends GameLogic {
         }
 
         // record the current local time
-        var currentTime = this.clientTime;
-        var targetUpdate = null;
-        var previousUpdate = null;
+        const currentTime = this.clientTime;
+        let targetUpdate = null;
+        let previousUpdate = null;
 
         // find a set of updates which 'contain' the current time
-        for(var i = 0; i < this.serverUpdates.length - 1; ++i) {
-            var currentUpdate = this.serverUpdates[i];
-            var nextUpdate = this.serverUpdates[i + 1];
+        for(let i = 0; i < this.serverUpdates.length - 1; ++i) {
+            const currentUpdate = this.serverUpdates[i];
+            const nextUpdate = this.serverUpdates[i + 1];
             if(currentTime > currentUpdate.time && currentTime <= nextUpdate.time) {
                 targetUpdate = nextUpdate;
                 previousUpdate = currentUpdate;
@@ -746,9 +764,9 @@ class ClientGameLogic extends GameLogic {
             // calculate the interpolation point (on [0, 1]) based on the
             // position of the current time with respect to both chosen times
             this.targetTime = targetUpdate.time;
-            var difference = this.targetTime - currentTime;
-            var maxDifference = (targetUpdate.time - previousUpdate.time);
-            var interpolationPoint = 0;
+            const difference = this.targetTime - currentTime;
+            const maxDifference = (targetUpdate.time - previousUpdate.time);
+            let interpolationPoint = 0;
 
             // set the interpolation point to the ratio of the actual difference to the max difference
             // if the max difference is zero, we simply keep the interpolation point at zero
@@ -762,18 +780,18 @@ class ClientGameLogic extends GameLogic {
             }
 
             // get the most recent server update
-            var lastServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
+            const lastServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
 
             // update each player
-            for (var playerId in this.players) {
+            for (let playerId in this.players) {
                 // whether or not to allow the given player to have its position updated
-                var allowPlayer = this.predictMovement || (playerId != this.clientPlayerId);
+                const allowPlayer = this.predictMovement || (playerId != this.clientPlayerId);
                 if (allowPlayer && this.players.hasOwnProperty(playerId)) {
                     try {
                         // calculate the theoretical position of the current player
-                        var playerTargetPosition = lastServerUpdate.players[playerId].position;
-                        var playerPastPosition = previousUpdate.players[playerId].position;
-                        var theoreticalPlayerPosition = vector.interpolate(
+                        const playerTargetPosition = lastServerUpdate.players[playerId].position;
+                        const playerPastPosition = previousUpdate.players[playerId].position;
+                        const theoreticalPlayerPosition = vector.interpolate(
                             playerTargetPosition,
                             playerPastPosition,
                             interpolationPoint
@@ -925,16 +943,16 @@ class ClientGameLogic extends GameLogic {
         }
 
         //console.log('processing server update');
-        var latestServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
+        const latestServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
 
         // obtain the most recent server position of the client player
-        var serverPosition = latestServerUpdate.players[this.clientPlayerId].position;
+        const serverPosition = latestServerUpdate.players[this.clientPlayerId].position;
 
-        var serverLastRenderedInputNumber = latestServerUpdate.players[this.clientPlayerId].lastRenderedInputNumber;
+        const serverLastRenderedInputNumber = latestServerUpdate.players[this.clientPlayerId].lastRenderedInputNumber;
         if (serverLastRenderedInputNumber) {
             // locate where the last rendered server update happens in the local updates array
-            var latestServerUpdateIndex = -1;
-            for (var i = 0; i < this.clientPlayer.inputs.length; i++) {
+            let latestServerUpdateIndex = -1;
+            for (let i = 0; i < this.clientPlayer.inputs.length; i++) {
                 if (this.clientPlayer.inputs[i].number == serverLastRenderedInputNumber) {
                     latestServerUpdateIndex = i;
                     break;
@@ -982,7 +1000,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     fillColor = fillColor || context.fillStyle;
 
     // use existing strokeStyle if any strokeStyle is not supplied
-    var strokeStyle = context.strokeStyle;
+    const strokeStyle = context.strokeStyle;
     topColor = topColor || strokeStyle;
     rightColor = rightColor || strokeStyle;
     bottomColor = bottomColor || strokeStyle;
@@ -996,13 +1014,13 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
 
     // context lines are always drawn half-in/half-out
     // so context.lineWidth/2 is used a lot
-    var lw = context.lineWidth / 2;
+    const lw = context.lineWidth / 2;
 
     // shortcut vars for boundaries
-    var leftBoundary = x - lw;
-    var rightBoundary = x + lw;
-    var topBoundary = y - lw;
-    var bottomBoundary = y + lw;
+    const leftBoundary = x - lw;
+    const rightBoundary = x + lw;
+    const topBoundary = y - lw;
+    const bottomBoundary = y + lw;
 
     // top
     trapezoid(
@@ -1060,10 +1078,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     // fill
     context.fillStyle = fillColor;
     context.fillRect(x, y, width, height);
-
-    // be kind -- always rewind (old vhs reference!)
     context.restore();
-    // don't let this path leak
     context.beginPath();
 }
 
@@ -1153,7 +1168,7 @@ class Player {
      * @returns {Player}
      */
     static lightCopy(player) {
-        var copy = new Player();
+        let copy = new Player();
         Object.assign(copy.position, player.position);
         Object.assign(copy.previousState.position, player.previousState.position);
         Object.assign(copy.inputs, player.inputs);
@@ -1201,11 +1216,11 @@ if (onServer()) {
     // fix request animation frame issues on the client
     (function () {
 
-        var framePeriod = FPS / 1000;
-        var lastTime = 0;
-        var vendors = ['ms', 'moz', 'webkit', 'o'];
+        const framePeriod = FPS / 1000;
+        let lastTime = 0;
+        const vendors = ['ms', 'moz', 'webkit', 'o'];
 
-        for (var x = 0; x < vendors.length && !window.requestAnimationFrame; x++) {
+        for (let x = 0; x < vendors.length && !window.requestAnimationFrame; x++) {
             window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
             window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] ||
                 window[vendors[x] + 'CancelRequestAnimationFrame'];
@@ -1213,9 +1228,9 @@ if (onServer()) {
 
         if (!window.requestAnimationFrame) {
             window.requestAnimationFrame = function (callback, element) {
-                var currentTime = Date.now();
-                var waitTime = Math.max(0, framePeriod - (currentTime - lastTime));
-                var id = window.setTimeout(function() {
+                const currentTime = Date.now();
+                const waitTime = Math.max(0, framePeriod - (currentTime - lastTime));
+                const id = window.setTimeout(function () {
                     callback(currentTime + waitTime);
                 }, waitTime);
                 lastTime = currentTime + waitTime;

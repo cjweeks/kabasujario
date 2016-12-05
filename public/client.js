@@ -10,7 +10,7 @@
  * @returns {vector} The mouse position.
  */
 function getMousePosition(canvas, event) {
-    var boundingRectangle = canvas.getBoundingClientRect();
+    const boundingRectangle = canvas.getBoundingClientRect();
     return vector.construct(
         (event.clientX - boundingRectangle.left) / (boundingRectangle.right - boundingRectangle.left) * canvas.width,
         (event.clientY - boundingRectangle.top) / (boundingRectangle.bottom - boundingRectangle.top) * canvas.height
@@ -20,7 +20,7 @@ function getMousePosition(canvas, event) {
 window.onload = function () {
 
     // obtain a reference to the canvas
-    var canvas = document.getElementById('canvas');
+    let canvas = document.getElementById('canvas');
 
     // set the wdth of the canvas to the width of the client's screen
     canvas.width = window.innerWidth; //document.body.clientWidth;
@@ -28,12 +28,12 @@ window.onload = function () {
     console.log(document.body.clientHeight);
 
     // create the camera object for the game
-    var camera = new Camera(0, 0, canvas.width, canvas.height, world.width, world.height);
+    let camera = new Camera(0, 0, canvas.width, canvas.height, world.width, world.height);
     //console.log('(' + canvas.width + ', ' + canvas.height + ')');
     //console.log(camera);
 
     // create the game logic object to simulate the client-side game
-    var gameLogic = new ClientGameLogic(camera);
+    let gameLogic = new ClientGameLogic(camera);
 
     // create a reference to the canvas and reset the dimensions
     gameLogic.viewport = canvas;
