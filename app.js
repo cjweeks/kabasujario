@@ -1,11 +1,11 @@
-var express = require('express');
-var http = require('http');
-var app = express();
-var server = http.createServer(app);
-var io = require('socket.io')(server);
+const express = require('express');
+const http = require('http');
+const app = express();
+const server = http.createServer(app);
+const io = require('socket.io')(server);
 const uuid = require('uuid/v1');
-var gameServer = require('./game-server.js');
-var port = process.env.PORT || 8080;
+const gameServer = require('./game-server.js');
+const port = process.env.PORT || 8080;
 
 // handle express logic
 // send index on request for '/'

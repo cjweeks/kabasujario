@@ -16,6 +16,14 @@ const PING_PERIOD = 1000;
 // The expected frame rate of the simulation (in fps)
 const FPS = 60; // TODO change this
 
+// TODO comments
+const SQUARE_SIZE = 40;
+const OUTLINE_SIZE = 4;
+const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
+const SQUARE_OUTLINE_COLOR_CLOSEST = 'rgb(255, 40, 242)';
+
+const MAX_PICKUP_DISTANCE = 2 * SQUARE_SIZE;
+
 
 /**
  * Returns true if the code is being run on the server.
@@ -24,6 +32,12 @@ const FPS = 60; // TODO change this
 function onServer() {
     return typeof window == 'undefined' || !window.document;
 }
+
+let uuid;
+if (onServer()) {
+    uuid = require('uuid/v1');
+}
+
 
 
 /*********************************** Vector ***********************************/
@@ -219,15 +233,12 @@ class GameLogic {
     constructor() {
 
         this.players = {};
-        this.blocks = [];
-
+        this.blocks = {};
 
         // set up movement constants
         this.MAX_DIRECTION_MAGNITUDE = 400.0;
-        this.MAX_PLAYER_SPEED = 500;
+        this.MAX_PLAYER_SPEED = 300;
 
-        // The speed at which the clients move.
-        //200;
 
         //Set up some physics integration values
         this.physicsDeltaTime = 0.0001;
@@ -452,7 +463,8 @@ class ServerGameLogic extends GameLogic {
         for (let i = 0; i < numBlocks; i++) {
             let x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
             let y = getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
-            this.blocks.push(new Block(x, y));
+            let blockId = uuid();
+            this.blocks[blockId] = new Block(x, y);
         }
     }
 
@@ -511,7 +523,7 @@ class ClientGameLogic extends GameLogic {
         this.inputNumber = 0;
 
         // the amount to smooth client movement if it lags behind the server
-        this.clientSmoothing = 0.2;
+        this.clientSmoothing = 0.1;
 
         // the net latency and ping between the client and server (initial values are placeholders)
         this.netLatency = 0.001;
@@ -573,6 +585,10 @@ class ClientGameLogic extends GameLogic {
         if (this.clientPlayer) {
             //console.log('(' + this.camera.xView + ', ' + this.camera.yView + ') : ' + vector.print(this.clientPlayer.position));
         }
+
+        // determine if a block is close enough to the client player to attach
+        this.determineCandidateBlock();
+
         // draw every player
         this.drawPlayers();
 
@@ -640,8 +656,59 @@ class ClientGameLogic extends GameLogic {
      * Draws every block.
      */
     drawBlocks() {
-        for (let i = 0; i < this.blocks.length; i++) {
-            Block.draw(this.blocks[i], this.context, this.camera);
+        for (let blockId in this.blocks) {
+            if (this.blocks.hasOwnProperty(blockId)) {
+                let outlineColor = SQUARE_OUTLINE_COLOR_DEFAULT;
+                if (blockId == this.clientPlayer.closestBlockId) {
+                    console.log('drawing special');
+                    outlineColor = SQUARE_OUTLINE_COLOR_CLOSEST;
+                }
+                Block.draw(this.blocks[blockId], this.context, this.camera, outlineColor);
+            }
+        }
+    }
+
+    determineCandidateBlock() {
+        if (!this.clientPlayer) {
+            return;
+        }
+        // TODO add logic for a player consisting of multiple blocks
+        let closestBlockId;
+        let closestDistance = 0;
+        let start = true;
+        for (let blockId in this.blocks) {
+            if (this.blocks.hasOwnProperty(blockId)) {
+                if (start) {
+                    // automatically set the minimum block to the first block
+                    start = false;
+                    closestBlockId = blockId;
+                    closestDistance = vector.magnitude(
+                        vector.subtract(
+                            this.clientPlayer.position,
+                            this.blocks[blockId].position
+                        )
+                    );
+                } else {
+                    // set distance if it is less than the current minimum
+                    let distance = vector.magnitude(
+                        vector.subtract(
+                            this.clientPlayer.position,
+                            this.blocks[blockId].position
+                        )
+                    );
+                    if (distance < closestDistance) {
+                        closestBlockId = blockId;
+                        closestDistance = distance;
+                    }
+                }
+            }
+        }
+
+        // if the closest block is close enough, mark it
+        if (closestDistance < MAX_PICKUP_DISTANCE) {
+            this.clientPlayer.closestBlockId = closestBlockId;
+        } else {
+            this.clientPlayer.closestBlockId = '';
         }
     }
 
@@ -933,7 +1000,10 @@ class ClientGameLogic extends GameLogic {
 
         // store the server time (note this is affected by latency)
         this.serverTime = update.time;
-        console.log(this.netPing);
+        if (this.netLatency > 80) {
+            console.log('Warning: high latency - ' + this.netLatency);
+        }
+
 
         //Update our local offset time from the last server update
         this.clientTime = this.serverTime - this.clientServerOffset;
@@ -1065,10 +1135,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
 
 /*********************************** Block ***********************************/
 
-// TODO comments
-const SQUARE_SIZE = 40;
-const OUTLINE_SIZE = 4;
-const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
+
 
 class Block {
     constructor(x, y) {
@@ -1077,7 +1144,8 @@ class Block {
         this.color = 'rgb(0, 173, 238)';
     }
 
-    static draw(block, context, camera) {
+    static draw(block, context, camera, outlineColor) {
+        outlineColor = outlineColor || SQUARE_OUTLINE_COLOR_DEFAULT;
         drawRectangle(
             context,
             block.position.x - block.size.x / 2 - camera.xView,
@@ -1086,7 +1154,7 @@ class Block {
             block.size.y,
             OUTLINE_SIZE,
             block.color,
-            SQUARE_OUTLINE_COLOR_DEFAULT
+            outlineColor
         );
     }
 }
@@ -1113,6 +1181,9 @@ class Player {
         this.inputs = [];
         this.lastRenderedInputNumber = 0;
         this.lastInputTime = new Date().getTime();
+
+        // store the id of the block closest to it
+        this.closestBlockId = '';
 
         // TODO move this from player
         this.positionLimits = {
