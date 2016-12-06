@@ -15,7 +15,7 @@ const PING_PERIOD = 1000;
 // The expected frame rate of the simulation (in fps)
 const FPS = 60;
 
-// the size of seach player and block
+// the size of each player and block
 const SQUARE_SIZE = 40;
 
 // the outline size of both players and blocks
@@ -829,37 +829,59 @@ class ClientGameLogic extends GameLogic {
         }
     }
 
+    /**
+     * Determines the closest block to the client player and
+     * assigns this block as the player's candidate block if
+     * it is within a limit distance.
+     */
     determineCandidateBlock() {
-        if (!this.clientPlayer) {
+        if (!this.clientPlayer || !this.clientPlayer.blocks.length) {
             return;
         }
         // TODO add logic for a player consisting of multiple blocks
         let closestBlockId;
+        let clientBlockIndex;
         let closestDistance = 0;
         let start = true;
         for (let blockId in this.blocks) {
             if (this.blocks.hasOwnProperty(blockId)) {
-                if (start) {
-                    // automatically set the minimum block to the first block
-                    start = false;
-                    closestBlockId = blockId;
-                    closestDistance = vector.magnitude(
-                        vector.subtract(
-                            this.clientPlayer.position,
-                            this.blocks[blockId].position
-                        )
-                    );
-                } else {
-                    // set distance if it is less than the current minimum
-                    let distance = vector.magnitude(
-                        vector.subtract(
-                            this.clientPlayer.position,
-                            this.blocks[blockId].position
-                        )
-                    );
-                    if (distance < closestDistance) {
+                for (let i = 0; i < this.clientPlayer.blocks.length; i++) {
+                    if (start) {
+                        // automatically set the minimum block to the first block
+                        start = false;
                         closestBlockId = blockId;
-                        closestDistance = distance;
+                        clientBlockIndex = i;
+                        closestDistance = vector.magnitude(
+                            vector.subtract(
+                                vector.add(
+                                    this.clientPlayer.position,
+                                    vector.scalarMultiply(
+                                        this.clientPlayer.blocks[i].position,
+                                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                                    )
+                                ),
+                                this.blocks[blockId].position
+                            )
+                        );
+                    } else {
+                        // set distance if it is less than the current minimum
+                        let distance = vector.magnitude(
+                            vector.subtract(
+                                vector.add(
+                                    this.clientPlayer.position,
+                                    vector.scalarMultiply(
+                                        this.clientPlayer.blocks[i].position,
+                                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                                    )
+                                ),
+                                this.blocks[blockId].position
+                            )
+                        );
+                        if (distance < closestDistance) {
+                            closestBlockId = blockId;
+                            clientBlockIndex = i;
+                            closestDistance = distance;
+                        }
                     }
                 }
             }
@@ -869,10 +891,17 @@ class ClientGameLogic extends GameLogic {
         if (closestDistance < MAX_PICKUP_DISTANCE) {
             // assign the block id to the client player
             this.clientPlayer.candidateBlockId = closestBlockId;
+            this.clientPlayer.activeBlockIndex = clientBlockIndex;
 
             // recalculate the vector between the two points
             let direction = vector.subtract(
-                this.clientPlayer.position,
+                vector.add(
+                    this.clientPlayer.position,
+                    vector.scalarMultiply(
+                        this.clientPlayer.blocks[clientBlockIndex].position,
+                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                    )
+                ),
                 this.blocks[closestBlockId].position
             );
 
@@ -880,6 +909,7 @@ class ClientGameLogic extends GameLogic {
             this.clientPlayer.activeEdge = edge.getEdgeFromDirection(direction);
         } else {
             this.clientPlayer.candidateBlockId = '';
+            this.clientPlayer.activeBlockIndex = 0;
             this.clientPlayer.activeEdge = edge.NONE;
         }
     }
@@ -897,6 +927,13 @@ class ClientGameLogic extends GameLogic {
 
         // determine the relative position of the new block
         let relativePosition = edge.getRelativePosition(this.clientPlayer.activeEdge);
+
+        // add an offset for the active block the new block is attaching to
+        console.log('attaching to block ' + this.clientPlayer.activeBlockIndex);
+        relativePosition = vector.add(
+            relativePosition,
+            this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
+        );
 
         // add a new block to the client player's list
         //this.clientPlayer.blocks.push(new Block(relativePosition.x, relativePosition.y));
@@ -1034,7 +1071,7 @@ class ClientGameLogic extends GameLogic {
 
         // if no target can be found, simply use the least recent update
         if(!targetUpdate) {
-            console.log('using 0th update');
+            // console.log('using 0th update');
             targetUpdate = this.serverUpdates[0];
             previousUpdate = this.serverUpdates[0];
         }
@@ -1208,7 +1245,7 @@ class ClientGameLogic extends GameLogic {
         if (this.netLatency > 80) {
             console.log('Warning: high latency');
         }
-        console.log(update.players);
+
         // set the blocks equal to the server copy TODO use interpolation?
         this.blocks = update.blocks;
 
@@ -1405,6 +1442,7 @@ class Player {
 
         // store the id of the block closest to it
         this.candidateBlockId = '';
+        this.activeBlockIndex = 0;
         this.activeEdge = edge.NONE;
 
         // TODO move this from player
@@ -1426,13 +1464,20 @@ class Player {
     static draw(player, context, camera) {
         for (let i = 0; i < player.blocks.length; i++) {
             let activeEdge = edge.NONE;
-            if (i == 0 && player.activeEdge) {
+            if (i == player.activeBlockIndex && player.activeEdge) {
                 activeEdge = player.activeEdge;
             }
-            let outlineColors = edge.formatColors(activeEdge, SQUARE_OUTLINE_COLOR_ACTIVE, SQUARE_OUTLINE_COLOR_DEFAULT);
+            let outlineColors = edge.formatColors(
+                activeEdge,
+                SQUARE_OUTLINE_COLOR_ACTIVE,
+                SQUARE_OUTLINE_COLOR_DEFAULT
+            );
 
-            let xPosition = player.position.x - player.size.x / 2 + player.blocks[i].position.x * (SQUARE_SIZE + OUTLINE_SIZE / 2);
-            let yPosition = player.position.y - player.size.y / 2 + player.blocks[i].position.y * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+            let xOffset = player.blocks[i].position.x * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+            let yOffset = player.blocks[i].position.y * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+
+            let xPosition = player.position.x - player.size.x / 2 + xOffset;
+            let yPosition = player.position.y - player.size.y / 2 + yOffset;
 
             drawRectangle(
                 context,

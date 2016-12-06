@@ -58,9 +58,7 @@ window.onload = function () {
 
     // // add key-pressed event C key to attach to a block
     window.addEventListener('keydown', function (event) {
-        console.log('trying to attach ' + event.which);
         if (event.which === 67) {
-
             event.preventDefault();
             gameLogic.attach();
         }
