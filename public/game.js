@@ -1,6 +1,5 @@
 
 
-
 // The maximum number of players that may exist in one gameLogic gameLogic
 const MAX_PLAYERS_PER_GAME = 10;
 
@@ -14,16 +13,22 @@ const PHYSICS_UPDATE_PERIOD = 15;
 const PING_PERIOD = 1000;
 
 // The expected frame rate of the simulation (in fps)
-const FPS = 60; // TODO change this
+const FPS = 60;
 
-// TODO comments
+// the size of seach player and block
 const SQUARE_SIZE = 40;
+
+// the outline size of both players and blocks
 const OUTLINE_SIZE = 4;
+
+// the default outline color of a player
 const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
-const SQUARE_OUTLINE_COLOR_CLOSEST = 'rgb(255, 40, 242)';
 
+// the color representing the active edge of a player (the edge that may attach to a block)
+const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgb(255, 40, 242)';
+
+// the maximum distance a player can be from a block to attach to it.
 const MAX_PICKUP_DISTANCE = 2 * SQUARE_SIZE;
-
 
 /**
  * Returns true if the code is being run on the server.
@@ -33,12 +38,129 @@ function onServer() {
     return typeof window == 'undefined' || !window.document;
 }
 
+// load the uuid module is we are on the server for block generation
 let uuid;
 if (onServer()) {
     uuid = require('uuid/v1');
 }
 
+/*********************************** Edge ***********************************/
 
+/**
+ * Specifies a set of directions corresponding to edges of squares / blocks. This is used for highlughting
+ * certain edges as well as attaching blocks to players.
+ */
+const edge = {
+    TOP: 'top',
+    BOTTOM: 'bottom',
+    LEFT: 'left',
+    RIGHT: 'right',
+    NONE: 'none',
+    ALL: 'all',
+    /**
+     * Returns true if the given value is a valid edge.
+     * @param edge the value to check.
+     * @returns {boolean}
+     */
+    valid: function (edge) {
+        return edge == this.TOP || edge == this.BOTTOM || edge == this.LEFT || edge == this.RIGHT;
+    },
+
+    /**
+     * Returns the edge value opposite to the given edge.
+     * @param edge The edge to find the opposite of.
+     * @returns {*} The opposite edge value.
+     */
+    opposite: function (edge) {
+        let opposite = this.NONE;
+        if (edge == this.TOP) {
+            opposite = this.BOTTOM;
+        } else if (edge == this.BOTTOM) {
+            opposite = this.TOP;
+        } else if (edge == this.LEFT) {
+            opposite = this.RIGHT;
+        } else if (edge == this.RIGHT) {
+            opposite = this.LEFT;
+        }
+        return opposite;
+    },
+
+    /**
+     * Returns an edge given a direction vector between two objects.
+     * @param direction The vector pointing from the object of analysis
+     * (the object we wish to assign an edge to) and the secondary object.
+     * @returns {*} The edge passed through from traversing the vector.
+     */
+    getEdgeFromDirection: function (direction) {
+        let edge;
+        if (direction.x > 0) {
+            if (Math.abs(direction.y) < direction.x) {
+                edge = this.LEFT;
+            } else if (direction.y >= direction.x) {
+                edge = this.TOP;
+            } else {
+                edge = this.BOTTOM;
+            }
+        } else {
+            if (Math.abs(direction.y) < -direction.x) {
+                edge = this.RIGHT;
+            } else if (direction.y >= -direction.x) {
+                edge = this.TOP;
+            } else {
+                edge = this.BOTTOM;
+            }
+        }
+        return edge;
+    },
+
+    /**
+     * Creates an object of colors for outlining a rectangle.
+     * @param edge The edge that will be highlighted.
+     * @param edgeColor The highlighting color of the provided edge.
+     * @param defaultColor The color of the non-highlighted edges.
+     * @returns {*} An object consisting of each edge-color pair.
+     */
+    formatColors: function (edge, edgeColor, defaultColor) {
+        let colors;
+        if (edge == this.TOP) {
+            colors = {
+                top: edgeColor,
+                bottom: defaultColor,
+                left: defaultColor,
+                right: defaultColor
+            }
+        } else if (edge == this.BOTTOM) {
+            colors = {
+                top: defaultColor,
+                bottom: edgeColor,
+                left: defaultColor,
+                right: defaultColor
+            }
+        } else if (edge == this.LEFT) {
+            colors = {
+                top: defaultColor,
+                bottom: defaultColor,
+                left: edgeColor,
+                right: defaultColor
+            }
+        } else if (edge == this.RIGHT) {
+            colors = {
+                top: defaultColor,
+                bottom: defaultColor,
+                left: defaultColor,
+                right: edgeColor
+            }
+        } else {
+            colors = {
+                top: defaultColor,
+                bottom: defaultColor,
+                left: defaultColor,
+                right: defaultColor
+            }
+        }
+        return colors;
+    }
+};
 
 /*********************************** Vector ***********************************/
 
@@ -211,16 +333,10 @@ const vector = {
 
 /*********************************** Game Logic ***********************************/
 
-// const world = {
-//     width: 800,
-//     height: 500
-// };
-
 const world = {
     width: 4000,
     height: 4000
 };
-
 
 /**
  * This object controls the physics of the
@@ -621,7 +737,16 @@ class ClientGameLogic extends GameLogic {
     }
 
 
-    // TODO comments
+    /**
+     * Normalizes the given direction vector.  This first checks if the
+     * vector is lower than size of the player and returns the zero vector
+     * if true. If this is false, the direction vector is scaled to reflect
+     * a linear relationship between the magnitude and the maximum speed; the
+     * resulting vector is has a magnitude between 0 and 1; vectors larger
+     * than 1 are automatically resized to a unit vectors.
+     * @param directionVector The direction vector to normalize.
+     * @returns {*} The normalized direction vector.
+     */
     normalizeDirection(directionVector) {
 
         // if the player's block is close enough to the mouse or if the player's movement is not enabled,
@@ -660,10 +785,15 @@ class ClientGameLogic extends GameLogic {
             if (this.blocks.hasOwnProperty(blockId)) {
                 let outlineColor = SQUARE_OUTLINE_COLOR_DEFAULT;
                 if (blockId == this.clientPlayer.closestBlockId) {
-                    console.log('drawing special');
-                    outlineColor = SQUARE_OUTLINE_COLOR_CLOSEST;
+                    outlineColor = SQUARE_OUTLINE_COLOR_ACTIVE;
                 }
-                Block.draw(this.blocks[blockId], this.context, this.camera, outlineColor);
+                Block.draw(
+                    this.blocks[blockId],
+                    this.context,
+                    this.camera,
+                    outlineColor,
+                    edge.opposite(this.clientPlayer.activeEdge)
+                );
             }
         }
     }
@@ -706,9 +836,20 @@ class ClientGameLogic extends GameLogic {
 
         // if the closest block is close enough, mark it
         if (closestDistance < MAX_PICKUP_DISTANCE) {
+            // assign the block id to the client player
             this.clientPlayer.closestBlockId = closestBlockId;
+
+            // recalculate the vector between the two points
+            let direction = vector.subtract(
+                this.clientPlayer.position,
+                this.blocks[closestBlockId].position
+            );
+
+            // assign the client player's active edge based on the direction
+            this.clientPlayer.activeEdge = edge.getEdgeFromDirection(direction);
         } else {
             this.clientPlayer.closestBlockId = '';
+            this.clientPlayer.activeEdge = edge.NONE;
         }
     }
 
@@ -1027,7 +1168,19 @@ class ClientGameLogic extends GameLogic {
 
 /*********************************** Drawing Functions ***********************************/
 
-// TODO comments
+/**
+ * Draws a trapezoid with the given points.
+ * @param context the context on which to render the trapezoid.
+ * @param color the color of the trapezoid.
+ * @param x1 The x coordinate of the first point in the trapezoid.
+ * @param y1 The y coordinate of the first point in the trapezoid.
+ * @param x2 The x coordinate of the second point in the trapezoid.
+ * @param y2 The y coordinate of the second point in the trapezoid.
+ * @param x3 The x coordinate of the third point in the trapezoid.
+ * @param y3 The y coordinate of the third point in the trapezoid.
+ * @param x4 The x coordinate of the fourth point in the trapezoid.
+ * @param y4 The y coordinate of the fourth point in the trapezoid.
+ */
 function trapezoid(context, color, x1, y1, x2, y2, x3, y3, x4, y4){
     context.beginPath();
     context.moveTo(x1,y1);
@@ -1040,11 +1193,14 @@ function trapezoid(context, color, x1, y1, x2, y2, x3, y3, x4, y4){
 }
 
 // TODO comments
-function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topColor, rightColor, bottomColor, leftColor){
+function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outlineColors){
 
-    rightColor = rightColor || topColor;
-    bottomColor = bottomColor || topColor;
-    leftColor = leftColor || topColor;
+    outlineColors = outlineColors || {
+            top: SQUARE_OUTLINE_COLOR_DEFAULT,
+            bottom: SQUARE_OUTLINE_COLOR_DEFAULT,
+            left: SQUARE_OUTLINE_COLOR_DEFAULT,
+            right: SQUARE_OUTLINE_COLOR_DEFAULT
+        };
 
     context.lineWidth = lineWidth;
     // use existing fillStyle if fillStyle is not supplied
@@ -1052,10 +1208,6 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
 
     // use existing strokeStyle if any strokeStyle is not supplied
     const strokeStyle = context.strokeStyle;
-    topColor = topColor || strokeStyle;
-    rightColor = rightColor || strokeStyle;
-    bottomColor = bottomColor || strokeStyle;
-    leftColor = leftColor || strokeStyle;
 
     // context will be modified, so save it
     context.save();
@@ -1076,7 +1228,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     // top
     trapezoid(
         context,
-        topColor,
+        outlineColors.top,
         leftBoundary,
         topBoundary,
         rightBoundary + width,
@@ -1089,7 +1241,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     // right
     trapezoid(
         context,
-        rightColor,
+        outlineColors.right,
         rightBoundary + width,
         topBoundary,
         rightBoundary + width,
@@ -1102,7 +1254,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     // bottom
     trapezoid(
         context,
-        bottomColor,
+        outlineColors.bottom,
         rightBoundary + width,
         bottomBoundary + height,
         leftBoundary,
@@ -1115,7 +1267,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
     // left
     trapezoid(
         context,
-        leftColor,
+        outlineColors.left,
         leftBoundary,
         bottomBoundary + height,
         leftBoundary,
@@ -1135,8 +1287,6 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, topCo
 
 /*********************************** Block ***********************************/
 
-
-
 class Block {
     constructor(x, y) {
         this.position = vector.construct(x, y);
@@ -1144,8 +1294,9 @@ class Block {
         this.color = 'rgb(0, 173, 238)';
     }
 
-    static draw(block, context, camera, outlineColor) {
+    static draw(block, context, camera, outlineColor, outlineEdge) {
         outlineColor = outlineColor || SQUARE_OUTLINE_COLOR_DEFAULT;
+        let outlineColors = edge.formatColors(outlineEdge, outlineColor, SQUARE_OUTLINE_COLOR_DEFAULT);
         drawRectangle(
             context,
             block.position.x - block.size.x / 2 - camera.xView,
@@ -1154,7 +1305,7 @@ class Block {
             block.size.y,
             OUTLINE_SIZE,
             block.color,
-            outlineColor
+            outlineColors
         );
     }
 }
@@ -1184,6 +1335,7 @@ class Player {
 
         // store the id of the block closest to it
         this.closestBlockId = '';
+        this.activeEdge = edge.NONE;
 
         // TODO move this from player
         this.positionLimits = {
@@ -1202,6 +1354,11 @@ class Player {
      * the players position to reflect a centered client player.
      */
     static draw(player, context, camera) {
+        let activeEdge = edge.NONE;
+        if (player.activeEdge) {
+            activeEdge = player.activeEdge;
+        }
+        let colors = edge.formatColors(activeEdge, SQUARE_OUTLINE_COLOR_ACTIVE, SQUARE_OUTLINE_COLOR_DEFAULT);
         drawRectangle(
             context,
             player.position.x - player.size.x / 2 - camera.xView,
@@ -1210,7 +1367,7 @@ class Player {
             player.size.y,
             OUTLINE_SIZE,
             player.color,
-            SQUARE_OUTLINE_COLOR_DEFAULT
+            colors
         );
     }
 
