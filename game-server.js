@@ -2,6 +2,7 @@
 const GameObjects = require('./public/game.js');
 const ServerGameLogic = GameObjects.ServerGameLogic;
 const Player = GameObjects.Player;
+const Block = GameObjects.Block;
 const ServerPlayer = GameObjects.ServerPlayer;
 
 const uuid = require('uuid/v1');
@@ -73,6 +74,21 @@ exports.onInput = function (playerSocket, data) {
     if (playerSocket && playerSocket.clientPlayerId && playerSocket.game && playerSocket.game.gameLogic) {
         playerSocket.game.gameLogic.processClientUpdate(playerSocket.clientPlayerId, data);
     }
+};
+
+
+exports.onAttach = function (playerSocket, data) {
+    // check if the block is still in the array
+    let gameLogic = playerSocket.game.gameLogic;
+    if (gameLogic.blocks[data.blockId]) {
+        // remove the block from the list
+        delete gameLogic.blocks[data.blockId];
+
+        // add the block to this copy of the player
+        gameLogic.players[data.playerId].blocks.push(new Block(data.relativePosition.x, data.relativePosition.y));
+
+    }
+
 };
 
 /************************************** Game ******************************/

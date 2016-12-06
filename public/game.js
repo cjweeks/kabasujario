@@ -21,6 +21,12 @@ const SQUARE_SIZE = 40;
 // the outline size of both players and blocks
 const OUTLINE_SIZE = 4;
 
+// the fill color of the player's square
+const PLAYER_COLOR = 'rgb(45, 48, 146)';
+
+// the fill color of blocks
+const BLOCK_COLOR = 'rgb(0, 173, 238)';
+
 // the default outline color of a player
 const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
 
@@ -29,6 +35,8 @@ const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgb(255, 40, 242)';
 
 // the maximum distance a player can be from a block to attach to it.
 const MAX_PICKUP_DISTANCE = 2 * SQUARE_SIZE;
+
+const MAX_HEALTH = 100;
 
 /**
  * Returns true if the code is being run on the server.
@@ -159,6 +167,28 @@ const edge = {
             }
         }
         return colors;
+    },
+
+    /**
+     * Returns a unit vector equal to the relative position of
+     * the given edge to (0, 0).
+     * @param edge The edge to find the relative position of.
+     * @returns {*|{x: (*|number), y: (*|number)}} The relative
+     * position unit vector.
+     */
+    getRelativePosition: function (edge) {
+        let relativePosition = vector.construct();
+        if (edge == this.TOP) {
+            relativePosition = vector.construct(0, -1);
+        } else if (edge == this.BOTTOM) {
+            relativePosition = vector.construct(0, 1);
+        } else if (edge == this.RIGHT) {
+            relativePosition = vector.construct(1, 0);
+        } else if (edge == this.LEFT) {
+            relativePosition = vector.construct(-1, 0);
+        }
+
+        return relativePosition;
     }
 };
 
@@ -536,6 +566,7 @@ class ServerGameLogic extends GameLogic {
         // record the state of the game at the current time
         let state = {
             players: playersLightCopy,
+            blocks: this.blocks,
             time: this.serverTime
         };
         // send the recorded state to each player
@@ -784,7 +815,7 @@ class ClientGameLogic extends GameLogic {
         for (let blockId in this.blocks) {
             if (this.blocks.hasOwnProperty(blockId)) {
                 let outlineColor = SQUARE_OUTLINE_COLOR_DEFAULT;
-                if (blockId == this.clientPlayer.closestBlockId) {
+                if (blockId == this.clientPlayer.candidateBlockId) {
                     outlineColor = SQUARE_OUTLINE_COLOR_ACTIVE;
                 }
                 Block.draw(
@@ -837,7 +868,7 @@ class ClientGameLogic extends GameLogic {
         // if the closest block is close enough, mark it
         if (closestDistance < MAX_PICKUP_DISTANCE) {
             // assign the block id to the client player
-            this.clientPlayer.closestBlockId = closestBlockId;
+            this.clientPlayer.candidateBlockId = closestBlockId;
 
             // recalculate the vector between the two points
             let direction = vector.subtract(
@@ -848,9 +879,38 @@ class ClientGameLogic extends GameLogic {
             // assign the client player's active edge based on the direction
             this.clientPlayer.activeEdge = edge.getEdgeFromDirection(direction);
         } else {
-            this.clientPlayer.closestBlockId = '';
+            this.clientPlayer.candidateBlockId = '';
             this.clientPlayer.activeEdge = edge.NONE;
         }
+    }
+
+    /**
+     * Attempts to attach the candidate block to the the player.
+     */
+    attach() {
+        if (!this.clientPlayer ||
+            !this.clientPlayer.candidateBlockId ||
+            !this.clientPlayer.activeEdge ||
+            !this.blocks[this.clientPlayer.candidateBlockId]) {
+            return;
+        }
+
+        // determine the relative position of the new block
+        let relativePosition = edge.getRelativePosition(this.clientPlayer.activeEdge);
+
+        // add a new block to the client player's list
+        //this.clientPlayer.blocks.push(new Block(relativePosition.x, relativePosition.y));
+
+        // delete the block from the list of blocks
+        //delete this.blocks[this.clientPlayer.candidateBlockId];
+
+        // emit an attach event, signaling the server of the changes
+        this.playerSocket.emit('attach', {
+            playerId: this.clientPlayerId,
+            blockId: this.clientPlayer.candidateBlockId,
+            relativePosition: relativePosition
+        })
+
     }
 
     /**
@@ -1025,6 +1085,10 @@ class ClientGameLogic extends GameLogic {
                             this.clientSmoothing
                         );
 
+
+                        // set the blocks array for this player according to the server update
+                        this.players[playerId].blocks = targetUpdate.players[playerId].blocks;
+
                         // this is the old broken way
                         // this.players[playerId].position = vector.interpolate(
                         //     this.players[playerId].position,
@@ -1142,9 +1206,11 @@ class ClientGameLogic extends GameLogic {
         // store the server time (note this is affected by latency)
         this.serverTime = update.time;
         if (this.netLatency > 80) {
-            console.log('Warning: high latency - ' + this.netLatency);
+            console.log('Warning: high latency');
         }
-
+        console.log(update.players);
+        // set the blocks equal to the server copy TODO use interpolation?
+        this.blocks = update.blocks;
 
         //Update our local offset time from the last server update
         this.clientTime = this.serverTime - this.clientServerOffset;
@@ -1288,10 +1354,11 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outli
 /*********************************** Block ***********************************/
 
 class Block {
-    constructor(x, y) {
+    constructor(x, y, color) {
         this.position = vector.construct(x, y);
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
-        this.color = 'rgb(0, 173, 238)';
+        this.color = color || BLOCK_COLOR;
+        this.health = MAX_HEALTH;
     }
 
     static draw(block, context, camera, outlineColor, outlineEdge) {
@@ -1316,7 +1383,7 @@ class Block {
 class Player {
     constructor() {
         // initialize rendering values
-        this.color = 'rgb(45, 48, 146)';
+        this.color = PLAYER_COLOR;
 
         // set initial current state values
         this.position = vector.construct(20, 20);
@@ -1326,7 +1393,10 @@ class Player {
         this.previousState = {
             position: vector.construct()
         };
-        this.stateTime = new Date().getTime();
+        this.stateTime = new Date().getTime(); // TODO remove?
+
+        // store the blocks a player has
+        this.blocks = [new Block(0, 0, this.color)];
 
         // store the input history
         this.inputs = [];
@@ -1334,7 +1404,7 @@ class Player {
         this.lastInputTime = new Date().getTime();
 
         // store the id of the block closest to it
-        this.closestBlockId = '';
+        this.candidateBlockId = '';
         this.activeEdge = edge.NONE;
 
         // TODO move this from player
@@ -1354,21 +1424,27 @@ class Player {
      * the players position to reflect a centered client player.
      */
     static draw(player, context, camera) {
-        let activeEdge = edge.NONE;
-        if (player.activeEdge) {
-            activeEdge = player.activeEdge;
+        for (let i = 0; i < player.blocks.length; i++) {
+            let activeEdge = edge.NONE;
+            if (i == 0 && player.activeEdge) {
+                activeEdge = player.activeEdge;
+            }
+            let outlineColors = edge.formatColors(activeEdge, SQUARE_OUTLINE_COLOR_ACTIVE, SQUARE_OUTLINE_COLOR_DEFAULT);
+
+            let xPosition = player.position.x - player.size.x / 2 + player.blocks[i].position.x * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+            let yPosition = player.position.y - player.size.y / 2 + player.blocks[i].position.y * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+
+            drawRectangle(
+                context,
+                xPosition - camera.xView,
+                yPosition - camera.yView,
+                player.size.x,
+                player.size.y,
+                OUTLINE_SIZE,
+                player.blocks[i].color,
+                outlineColors
+            );
         }
-        let colors = edge.formatColors(activeEdge, SQUARE_OUTLINE_COLOR_ACTIVE, SQUARE_OUTLINE_COLOR_DEFAULT);
-        drawRectangle(
-            context,
-            player.position.x - player.size.x / 2 - camera.xView,
-            player.position.y - player.size.y / 2 - camera.yView,
-            player.size.x,
-            player.size.y,
-            OUTLINE_SIZE,
-            player.color,
-            colors
-        );
     }
 
     /**
@@ -1381,6 +1457,7 @@ class Player {
         Object.assign(copy.position, player.position);
         Object.assign(copy.previousState.position, player.previousState.position);
         Object.assign(copy.inputs, player.inputs);
+        copy.blocks = player.blocks;
         copy.lastRenderedInputNumber = player.lastRenderedInputNumber;
         copy.lastInputTime = player.lastInputTime;
         return copy;
@@ -1419,6 +1496,7 @@ if (onServer()) {
         ServerGameLogic: ServerGameLogic,
         ClientGameLogic: ClientGameLogic,
         Player: Player,
+        Block: Block,
         ServerPlayer: ServerPlayer
     };
 } else {

@@ -47,10 +47,22 @@ window.onload = function () {
     }, false);
 
     // add key-pressed event for the space bar to toggle movement
-    $(window).keypress(function (event) {
+
+    window.addEventListener('keypress', function (event) {
         if (event.keyCode === 0 || event.keyCode === 32) {
             event.preventDefault();
             gameLogic.clientState.movementEnabled = !gameLogic.clientState.movementEnabled;
+        }
+
+    });
+
+    // // add key-pressed event C key to attach to a block
+    window.addEventListener('keydown', function (event) {
+        console.log('trying to attach ' + event.which);
+        if (event.which === 67) {
+
+            event.preventDefault();
+            gameLogic.attach();
         }
     });
 

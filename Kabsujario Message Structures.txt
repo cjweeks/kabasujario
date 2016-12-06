@@ -3,7 +3,8 @@ Kabsujario Message Structures
 
 server-update {
 	time: --,
-	players: {id: player, ...}
+	players: {id: player, ...},
+	blocks: {id: block, ...}
 }
 
 
@@ -25,11 +26,17 @@ input {
 }
 
 
-player-aded {
+player-added {
 	playerId: --,
 	player: {}
 }
 
 player-removed {
 	playerId: --
+}
+
+attach {
+    playerId: --,
+    blockId: --,
+    relativePosition: {x: --, y: --}
 }
