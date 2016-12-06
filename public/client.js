@@ -64,7 +64,7 @@ window.onload = function () {
         console.log(canvas.width + ', ' + canvas.height);
 
         // notify the camera of this change
-        camera.updateCanvas(window.innerWidth, window.innerHeight);
+        camera.updateConfiguration(window.innerWidth, window.innerHeight);
     });
 
     // start the client update loop

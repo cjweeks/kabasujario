@@ -83,19 +83,41 @@ class Camera {
 
     }
 
-    updateCanvas(canvasWidth, canvasHeight) {
+
+    /**
+     * Updates the parameters of the camera to respond to changes in the window size.
+     * @param canvasWidth the new canvas width.
+     * @param canvasHeight the new canvas height.
+     * @param xDeadZone The new x dead zone (defaults to canvasWidth / 2).
+     * @param yDeadZone The new y dead zone (defaults to canvasHeight / 2).
+     */
+    updateConfiguration(canvasWidth, canvasHeight, xDeadZone, yDeadZone) {
+        xDeadZone = xDeadZone || canvasWidth / 2;
+        yDeadZone = yDeadZone || canvasHeight / 2;
         this.wView = canvasWidth;
         this.hView = canvasHeight;
+        this.xDeadZone = xDeadZone;
+        this.yDeadZone = yDeadZone;
         this.viewportRect = new Rectangle(this.xView, this.yView, this.wView, this.hView);
     }
 
-    // gameObject needs to have "x" and "y" properties (as world(or room) position)
+    /**
+     * Configures the camera to follow the given game object.
+     * @param gameObject The game object to follow.
+     * @param xDeadZone The maximum x distance from the target
+     * to the border before the camera begins moving.
+     * @param yDeadZone The maximum y distance from the target
+     * to the border before the camera begins moving.
+     */
     setTarget(gameObject, xDeadZone, yDeadZone) {
         this.target = gameObject;
         this.xDeadZone = xDeadZone;
         this.yDeadZone = yDeadZone;
-    };
+    }
 
+    /**
+     * Updates the camera position.
+     */
     update() {
         // keep following the target
         if (this.target != null) {
@@ -136,5 +158,5 @@ class Camera {
                 this.yView = this.worldRect.bottom - this.hView;
             }
         }
-    };
+    }
 }
