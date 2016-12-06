@@ -511,7 +511,7 @@ class ClientGameLogic extends GameLogic {
         this.inputNumber = 0;
 
         // the amount to smooth client movement if it lags behind the server
-        this.clientSmoothing = 0.02;
+        this.clientSmoothing = 0.2;
 
         // the net latency and ping between the client and server (initial values are placeholders)
         this.netLatency = 0.001;
