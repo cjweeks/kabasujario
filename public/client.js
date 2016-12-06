@@ -37,8 +37,6 @@ window.onload = function () {
 
     // create a reference to the canvas and reset the dimensions
     gameLogic.viewport = canvas;
-    // gameLogic.viewport.width = world.width;
-    // gameLogic.viewport.height = world.height;
 
     // create a reference to the rendering context for drawing
     gameLogic.context = gameLogic.viewport.getContext('2d');
@@ -54,6 +52,19 @@ window.onload = function () {
             event.preventDefault();
             gameLogic.clientState.movementEnabled = !gameLogic.clientState.movementEnabled;
         }
+    });
+
+    // add a window-resize listener to update the camera if the window is resized
+    window.addEventListener('resize', function () {
+        console.log('resize event captured');
+        // resize the canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        console.log(canvas.width + ', ' + canvas.height);
+
+        // notify the camera of this change
+        camera.updateCanvas(window.innerWidth, window.innerHeight);
     });
 
     // start the client update loop

@@ -16,9 +16,6 @@ const PING_PERIOD = 1000;
 // The expected frame rate of the simulation (in fps)
 const FPS = 60; // TODO change this
 
-// TODO remove this (?) currently not used
-const MAX_DIRECTION_MAGNITUDE = 100;
-
 
 /**
  * Returns true if the code is being run on the server.
@@ -227,7 +224,7 @@ class GameLogic {
 
         // set up movement constants
         this.MAX_DIRECTION_MAGNITUDE = 400.0;
-        this.MAX_PLAYER_SPEED = 700;
+        this.MAX_PLAYER_SPEED = 500;
 
         // The speed at which the clients move.
         //200;
@@ -282,7 +279,7 @@ class GameLogic {
             const currentTime = new Date().getTime();
             this.deltaTime = currentTime - this.previousTime;
             this.previousTime = currentTime;
-            this.localTime += this.deltaTime / 1000.0;
+            this.localTime += this.deltaTime;
         }.bind(this), TIMER_PERIOD);
     }
     /**
@@ -293,7 +290,7 @@ class GameLogic {
     startPhysics() {
         setInterval(function(){
             const currentTime = new Date().getTime();
-            this.physicsDeltaTime = (currentTime - this.physicsPreviousTime) / 1000.0;
+            this.physicsDeltaTime = currentTime - this.physicsPreviousTime;
             this.physicsPreviousTime = currentTime;
             this.updatePhysics();
         }.bind(this), PHYSICS_UPDATE_PERIOD);
@@ -302,10 +299,10 @@ class GameLogic {
     update(time) {
         // determine the delta time values
         if (this.previousFrameTime) {
-            this.deltaTime = ((time - this.previousFrameTime) / 1000.0);
+            this.deltaTime = (time - this.previousFrameTime);
         }
         else {
-            this.deltaTime = 0.016; // TODO abstract this value
+            this.deltaTime = 0.015; // TODO abstract this value (this is just an initial value)
         }
 
         //Store the last frame time
@@ -355,9 +352,8 @@ class GameLogic {
                 let input = player.inputs[i];
                 // only render inputs that have not yet been rendered
                 if (input.number > player.lastRenderedInputNumber) {
-                    // add each direction as a unit vector
-                    // TODO this is a test
-                    //scaledDirection = vector.add(scaledDirection, vector.unitVector(input.direction));
+                    // recall that the direction in an 'input' has already been normalized (see recordInput),
+                    // so no operations must be performed on it here
                     scaledDirection = vector.add(scaledDirection, input.direction);
                 }
             }
@@ -367,7 +363,6 @@ class GameLogic {
             player.lastInputTime = lastInput.time;
             player.lastRenderedInputNumber = lastInput.number;
         }
-        // console.log(vector.print(vector.scalarMultiply(scaledDirection, (this.MAX_PLAYER_SPEED * PHYSICS_UPDATE_PERIOD / 1000.0))));
         // return the displacement vector of the player
         return vector.scalarMultiply(scaledDirection, (this.MAX_PLAYER_SPEED * PHYSICS_UPDATE_PERIOD / 1000.0));
     }
@@ -403,7 +398,6 @@ class ServerGameLogic extends GameLogic {
         super.update(time);
         //Update the state of our local clock to match the timer TODO explain
         this.serverTime = this.localTime;
-
         // create a light copy of each player
         let playersLightCopy = {};
         for (let playerId in this.players) {
@@ -517,7 +511,7 @@ class ClientGameLogic extends GameLogic {
         this.inputNumber = 0;
 
         // the amount to smooth client movement if it lags behind the server
-        this.clientSmoothing = 0.1;//5;
+        this.clientSmoothing = 0.02;
 
         // the net latency and ping between the client and server (initial values are placeholders)
         this.netLatency = 0.001;
@@ -565,16 +559,13 @@ class ClientGameLogic extends GameLogic {
         super.update(time);
 
         // clear the screen area
-        this.context.clearRect(0,0, world.width, world.height);
+        this.context.clearRect(0, 0, world.width, world.height);
 
         // get the client player's inputs
         this.recordInput();
 
         // update the remote players (and the client player if prediction is disabled)
         this.processServerUpdates();
-
-        // update the client player's position if movement prediction is enabled
-        this.updateLocalPosition();
 
         // update the camera object to reflect new positions
         this.camera.update();
@@ -625,32 +616,14 @@ class ClientGameLogic extends GameLogic {
 
         // scale down the direction vector by the maximum possible magnitude
         let normalized = vector.scalarMultiply(directionVector, 1.0 / this.MAX_DIRECTION_MAGNITUDE);
-        //console.log(vector.print(normalized));
 
         // if the resulting vector is too large, convert it into a unit vector
         if (vector.magnitude(normalized) > 1) {
-            console.log('shrinking: ' + vector.magnitude(normalized));
             normalized = vector.unitVector(normalized);
         }
 
         return normalized;
     }
-    // TODO I think this doesn't have a purpose anymore after the recent updates
-    updateLocalPosition() {
-        if(this.predictMovement) {
-            if (!this.clientPlayer) {
-                return;
-            }
-            // determine the time since the last update
-            let time = (this.localTime - this.clientPlayer.stateTime) / this.physicsDeltaTime;
-
-            //Then store the states for clarity,
-            let previousPosition = this.clientPlayer.previousState.position;
-
-            GameLogic.checkCollisions(this.clientPlayer);
-        }
-    };
-
 
     /**
      * Draws each player.
@@ -725,6 +698,46 @@ class ClientGameLogic extends GameLogic {
         this.playerSocket.emit('input', newInput);
     }
 
+
+    /**
+     * Aligns the client with the server by identifying the common
+     * player inputs, rendering them, and removing them
+     */
+    processServerUpdatePosition() {
+        if (!this.clientPlayer || !this.serverUpdates.length) {
+            return;
+        }
+
+        //console.log('processing server update');
+        const latestServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
+
+        // obtain the most recent server position of the client player
+        const serverPosition = latestServerUpdate.players[this.clientPlayerId].position;
+
+        const serverLastRenderedInputNumber = latestServerUpdate.players[this.clientPlayerId].lastRenderedInputNumber;
+        if (serverLastRenderedInputNumber) {
+            // locate where the last rendered server update happens in the local updates array
+            let latestServerUpdateIndex = -1;
+            for (let i = 0; i < this.clientPlayer.inputs.length; i++) {
+                if (this.clientPlayer.inputs[i].number == serverLastRenderedInputNumber) {
+                    latestServerUpdateIndex = i;
+                    break;
+                }
+            }
+
+            // remove updates we have already processed locally
+            if (latestServerUpdateIndex > -1) {
+                // remove the inputs already processed on the server
+                this.clientPlayer.inputs.splice(0, latestServerUpdateIndex + 1);
+                // change the position to the latest server position
+                this.clientPlayer.position = vector.generate(serverPosition); // TODO keep this?
+                this.clientPlayer.lastRenderedInputNumber = latestServerUpdateIndex;
+                // trigger another update to read the remaining inputs
+                this.updatePhysics();
+            }
+        }
+    }
+
     /**
      * This handles the interpolation of players' positions by reading from server inputs.
      */
@@ -741,7 +754,7 @@ class ClientGameLogic extends GameLogic {
         let previousUpdate = null;
 
         // find a set of updates which 'contain' the current time
-        for(let i = 0; i < this.serverUpdates.length - 1; ++i) {
+        for(let i = 0; i < this.serverUpdates.length - 1; i++) {
             const currentUpdate = this.serverUpdates[i];
             const nextUpdate = this.serverUpdates[i + 1];
             if(currentTime > currentUpdate.time && currentTime <= nextUpdate.time) {
@@ -801,8 +814,15 @@ class ClientGameLogic extends GameLogic {
                         this.players[playerId].position = vector.interpolate(
                             this.players[playerId].position,
                             theoreticalPlayerPosition,
-                            this.physicsDeltaTime * this.clientSmoothing
+                            this.clientSmoothing
                         );
+
+                        // this is the old broken way
+                        // this.players[playerId].position = vector.interpolate(
+                        //     this.players[playerId].position,
+                        //     theoreticalPlayerPosition,
+                        //     this.physicsDeltaTime * this.clientSmoothing
+                        // );
 
                     } catch (error) {
                         // this probably means a player was added and the server records are inconsistent
@@ -884,7 +904,7 @@ class ClientGameLogic extends GameLogic {
         this.blocks = data.blocks;
 
         // set the camera to track the client player
-        this.camera.follow(this.clientPlayer, this.viewport.width / 2, this.viewport.height / 2);
+        this.camera.setTarget(this.clientPlayer, this.viewport.width / 2, this.viewport.height / 2);
 
         // obtain the server time based on ping data
         this.serverTime = data.time + this.netLatency;
@@ -913,9 +933,10 @@ class ClientGameLogic extends GameLogic {
 
         // store the server time (note this is affected by latency)
         this.serverTime = update.time;
+        console.log(this.netPing);
 
         //Update our local offset time from the last server update
-        this.clientTime = this.serverTime - (this.clientServerOffset / 1000);
+        this.clientTime = this.serverTime - this.clientServerOffset;
 
         // store the update
         this.serverUpdates.push(update);
@@ -931,46 +952,6 @@ class ClientGameLogic extends GameLogic {
         //Handle the latest positions from the server
         //and make sure to correct our local predictions, making the server have final say.
         this.processServerUpdatePosition();
-    }
-
-    /**
-     * Aligns the client with the server by identifying the common
-     * player inputs, rendering them, and removing them
-     */
-    processServerUpdatePosition() {
-        if (!this.clientPlayer || !this.serverUpdates.length) {
-            return;
-        }
-
-        //console.log('processing server update');
-        const latestServerUpdate = this.serverUpdates[this.serverUpdates.length - 1];
-
-        // obtain the most recent server position of the client player
-        const serverPosition = latestServerUpdate.players[this.clientPlayerId].position;
-
-        const serverLastRenderedInputNumber = latestServerUpdate.players[this.clientPlayerId].lastRenderedInputNumber;
-        if (serverLastRenderedInputNumber) {
-            // locate where the last rendered server update happens in the local updates array
-            let latestServerUpdateIndex = -1;
-            for (let i = 0; i < this.clientPlayer.inputs.length; i++) {
-                if (this.clientPlayer.inputs[i].number == serverLastRenderedInputNumber) {
-                    latestServerUpdateIndex = i;
-                    break;
-                }
-            }
-
-            // remove updates we have already processed locally
-            if (latestServerUpdateIndex > 0) {
-                // remove the inputs already processed on the server
-                this.clientPlayer.inputs.splice(0, latestServerUpdateIndex + 1);
-                // change the position to the latest server position
-                this.clientPlayer.position = vector.generate(serverPosition); // TODO keep this?
-                this.clientPlayer.lastRenderedInputNumber = latestServerUpdateIndex;
-                // trigger another update to read the remaining inputs
-                this.updatePhysics();
-                this.updateLocalPosition();
-            }
-        }
     }
 }
 

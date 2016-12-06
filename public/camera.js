@@ -83,8 +83,14 @@ class Camera {
 
     }
 
+    updateCanvas(canvasWidth, canvasHeight) {
+        this.wView = canvasWidth;
+        this.hView = canvasHeight;
+        this.viewportRect = new Rectangle(this.xView, this.yView, this.wView, this.hView);
+    }
+
     // gameObject needs to have "x" and "y" properties (as world(or room) position)
-    follow(gameObject, xDeadZone, yDeadZone) {
+    setTarget(gameObject, xDeadZone, yDeadZone) {
         this.target = gameObject;
         this.xDeadZone = xDeadZone;
         this.yDeadZone = yDeadZone;
