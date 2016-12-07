@@ -737,7 +737,7 @@ class ClientGameLogic extends GameLogic {
         // perform server / client common updates
         super.update(time);
 
-        // clear the screen area
+        // clear the entire context
         this.context.clearRect(0, 0, world.width, world.height);
 
         // get the client player's inputs
@@ -751,6 +751,9 @@ class ClientGameLogic extends GameLogic {
 
         // determine if a block is close enough to the client player to attach
         this.determineCandidateBlock();
+
+        // draw the puzzle grid and solutions
+        this.drawPuzzle();
 
         // draw every player
         this.drawPlayers();
@@ -811,6 +814,38 @@ class ClientGameLogic extends GameLogic {
         }
 
         return normalized;
+    }
+
+    /**
+     * Draws the puzzle grid and the current solutions.
+     */
+    drawPuzzle() {
+        // draw a grid in the center of the
+        // TODO create constants
+        let numRows = 16;
+        let numCols = 11;
+
+        // define the x and y coordinates of the top left of the grid
+        let x = world.width / 2 - numCols * SQUARE_SEPARATION - this.camera.xView;
+        let y = world.height / 2 - numRows * SQUARE_SEPARATION - this.camera.yView;
+
+        // draw vertical lines
+        for (let columnNumber = 0; columnNumber < numCols; columnNumber++) {
+            this.context.moveTo(x + columnNumber * SQUARE_SEPARATION, y);
+            this.context.lineTo(x + columnNumber * SQUARE_SEPARATION, y + (numRows  - 1) * SQUARE_SEPARATION);
+        }
+
+        // draw horizontal lines
+        for (let rowNumber = 0; rowNumber < numRows; rowNumber++) {
+            this.context.moveTo(x, y + rowNumber * SQUARE_SEPARATION);
+            this.context.lineTo(x + (numCols -1 ) * SQUARE_SEPARATION, y + rowNumber * SQUARE_SEPARATION);
+        }
+
+
+        this.context.strokeStyle = 'rgb(255, 255, 255)';
+        this.context.lineWidth = OUTLINE_SIZE / 2; // TODO why must this be divided by 2
+        this.context.stroke();
+
     }
 
     /**
@@ -937,34 +972,40 @@ class ClientGameLogic extends GameLogic {
         if (!this.clientPlayer ||
             !this.clientPlayer.candidateBlockId ||
             !this.clientPlayer.activeEdge ||
+            !(this.clientPlayer.activeBlockIndex >= 0) ||
             !this.blocks[this.clientPlayer.candidateBlockId]) {
             return;
         }
 
-        // determine the relative position of the new block
-        let relativePosition = edge.getRelativePosition(this.clientPlayer.activeEdge);
+        try {
+            // determine the relative position of the new block
+            let relativePosition = edge.getRelativePosition(this.clientPlayer.activeEdge);
 
-        // add an offset for the active block the new block is attaching to
-        console.log('attaching to block ' + this.clientPlayer.activeBlockIndex);
-        relativePosition = vector.add(
-            relativePosition,
-            this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
-        );
+            // add an offset for the active block the new block is attaching to
+            console.log('attaching to block ' + this.clientPlayer.activeBlockIndex);
+            relativePosition = vector.add(
+                relativePosition,
+                this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
+            );
 
-        // TODO determine whether or not this should happen on the client before the server
-        // add a new block to the client player's list
-        //this.clientPlayer.blocks.push(new Block(relativePosition.x, relativePosition.y));
+            // TODO determine whether or not this should happen on the client before the server
+            // add a new block to the client player's list
+            //this.clientPlayer.blocks.push(new Block(relativePosition.x, relativePosition.y));
 
-        // delete the block from the list of blocks
-        //delete this.blocks[this.clientPlayer.candidateBlockId];
+            // delete the block from the list of blocks
+            //delete this.blocks[this.clientPlayer.candidateBlockId];
 
-        // emit an attach event, signaling the server of the changes
-        this.playerSocket.emit('attach', {
-            playerId: this.clientPlayerId,
-            blockId: this.clientPlayer.candidateBlockId,
-            relativePosition: relativePosition
-        })
+            // emit an attach event, signaling the server of the changes
+            this.playerSocket.emit('attach', {
+                playerId: this.clientPlayerId,
+                blockId: this.clientPlayer.candidateBlockId,
+                relativePosition: relativePosition
+            })
 
+        } catch (error) {
+            // this happens when someone spams the attach key for an unknown reason
+            console.log('Caught attach error -' + error);
+        }
     }
 
     detach() {
@@ -1174,7 +1215,7 @@ class ClientGameLogic extends GameLogic {
                     } catch (error) {
                         // this probably means a player was added and the server records are inconsistent
                         // this error is ok if it only occurs a small number of times after a player is added
-                        console.log('Caught server update history error' + error);
+                        console.log('Caught server update history error - ' + error);
                     }
                 }
             }
