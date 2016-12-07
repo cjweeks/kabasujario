@@ -43,6 +43,10 @@ io.on('connection', function (clientSocket) {
         gameServer.onAttach(clientSocket, data);
     });
 
+    clientSocket.on('detach', function (data) {
+        gameServer.onDetach(clientSocket, data);
+    });
+
     clientSocket.on('disconnect', function () {
         console.log('Player ' + clientSocket.clientPlayerId + ' disconnected');
 

@@ -4,12 +4,13 @@ const ServerGameLogic = GameObjects.ServerGameLogic;
 const Player = GameObjects.Player;
 const Block = GameObjects.Block;
 const ServerPlayer = GameObjects.ServerPlayer;
-
 const uuid = require('uuid/v1');
 
-
+// the initial number of blocks to be generated when the game starts
 const INITIAL_NUM_BLOCKS = 160;
 
+// the time (in ms) between server updates
+const SERVER_UPDATE_PERIOD = 45;
 
 // define basic game container object
 const exports = module.exports = {
@@ -28,8 +29,6 @@ const exports = module.exports = {
     }
 
 };
-
-const SERVER_UPDATE_PERIOD = 45;
 
 // indicates the current simulated time, in seconds
 exports.localTime = 0;
@@ -76,7 +75,13 @@ exports.onInput = function (playerSocket, data) {
     }
 };
 
-
+/**
+ * Processes data from an attach event.  The attached
+ * block is removed from the list of blocks and passed
+ * to the respective player.
+ * @param playerSocket The socket object of the corresponding player.
+ * @param data The data from the attach event.
+ */
 exports.onAttach = function (playerSocket, data) {
     // check if the block is still in the array
     let gameLogic = playerSocket.game.gameLogic;
@@ -88,6 +93,21 @@ exports.onAttach = function (playerSocket, data) {
         gameLogic.players[data.playerId].blocks.push(new Block(data.relativePosition.x, data.relativePosition.y));
 
     }
+};
+
+/**
+ * Extracts data from a detach event, and passes this data to the
+ * server game logic object for processing.
+ * @param playerSocket The socket object for the respective player.
+ * @param data The data from the detach.
+ */
+exports.onDetach = function(playerSocket, data) {
+    // remove and retrieve the most recently added block
+    let gameLogic = playerSocket.game.gameLogic;
+    if (!gameLogic.players[data.playerId]) {
+        return;
+    }
+    gameLogic.detach(data.playerId);
 
 };
 

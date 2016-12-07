@@ -21,6 +21,9 @@ const SQUARE_SIZE = 40;
 // the outline size of both players and blocks
 const OUTLINE_SIZE = 4;
 
+// the distance between attached squares of a player
+const SQUARE_SEPARATION = SQUARE_SIZE + OUTLINE_SIZE / 2;
+
 // the fill color of the player's square
 const PLAYER_COLOR = 'rgb(45, 48, 146)';
 
@@ -546,14 +549,15 @@ class ServerGameLogic extends GameLogic {
     }
 
     /**
-     * Updates the game
-     * @param time
+     * Updates the game.
+     * @param time The current time.
      */
     update(time) {
 
         // call the client / server common updates
         super.update(time);
-        //Update the state of our local clock to match the timer TODO explain
+
+        // update the server time using the time from the main timer
         this.serverTime = this.localTime;
         // create a light copy of each player
         let playersLightCopy = {};
@@ -602,6 +606,23 @@ class ServerGameLogic extends GameLogic {
         }
     }
 
+    detach(playerId) {
+
+        // remove the most recently added block
+        let block = this.players[playerId].blocks.pop();
+
+        // set the position back to absolute and restore the health
+        block.position = vector.add(
+            vector.scalarMultiply(block.position, SQUARE_SEPARATION),
+            this.players[playerId].position
+        );
+        block.health = MAX_HEALTH;
+
+        // add the block to the list of blocks
+        let blockId = uuid();
+        this.blocks[blockId] = block;
+    }
+
     /**
      * Generates a set of randomly places blocks
      * @param numBlocks The number of blocks to generate.
@@ -632,7 +653,6 @@ class ServerGameLogic extends GameLogic {
 
 /*********************************** Client Game Logic ***********************************/
 
-// TODO note that the inputs are cleared on the client side in 'processServerUpdatePosition'
 class ClientGameLogic extends GameLogic {
     /**
      * Creates a new client game logic object.
@@ -728,10 +748,6 @@ class ClientGameLogic extends GameLogic {
 
         // update the camera object to reflect new positions
         this.camera.update();
-        //console.log(this.camera);
-        if (this.clientPlayer) {
-            //console.log('(' + this.camera.xView + ', ' + this.camera.yView + ') : ' + vector.print(this.clientPlayer.position));
-        }
 
         // determine if a block is close enough to the client player to attach
         this.determineCandidateBlock();
@@ -838,7 +854,7 @@ class ClientGameLogic extends GameLogic {
         if (!this.clientPlayer || !this.clientPlayer.blocks.length) {
             return;
         }
-        // TODO add logic for a player consisting of multiple blocks
+
         let closestBlockId;
         let clientBlockIndex;
         let closestDistance = 0;
@@ -857,7 +873,7 @@ class ClientGameLogic extends GameLogic {
                                     this.clientPlayer.position,
                                     vector.scalarMultiply(
                                         this.clientPlayer.blocks[i].position,
-                                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                                        SQUARE_SEPARATION
                                     )
                                 ),
                                 this.blocks[blockId].position
@@ -871,7 +887,7 @@ class ClientGameLogic extends GameLogic {
                                     this.clientPlayer.position,
                                     vector.scalarMultiply(
                                         this.clientPlayer.blocks[i].position,
-                                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                                        SQUARE_SEPARATION
                                     )
                                 ),
                                 this.blocks[blockId].position
@@ -899,7 +915,7 @@ class ClientGameLogic extends GameLogic {
                     this.clientPlayer.position,
                     vector.scalarMultiply(
                         this.clientPlayer.blocks[clientBlockIndex].position,
-                        SQUARE_SIZE + OUTLINE_SIZE / 2
+                        SQUARE_SEPARATION
                     )
                 ),
                 this.blocks[closestBlockId].position
@@ -935,6 +951,7 @@ class ClientGameLogic extends GameLogic {
             this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
         );
 
+        // TODO determine whether or not this should happen on the client before the server
         // add a new block to the client player's list
         //this.clientPlayer.blocks.push(new Block(relativePosition.x, relativePosition.y));
 
@@ -950,6 +967,28 @@ class ClientGameLogic extends GameLogic {
 
     }
 
+    detach() {
+        if (!this.clientPlayer || this.clientPlayer.blocks.length < 2) {
+            return;
+        }
+
+        // remove and retrieve the most recently added block
+        // let block = this.clientPlayer.blocks.pop();
+        //
+        // // set the position back to absolute and restore the health
+        // block.position = vector.add(
+        //     vector.scalarMultiply(block.position, SQUARE_SEPARATION),
+        //     this.clientPlayer.position
+        // );
+        // block.health = MAX_HEALTH;
+
+       // send a detach event to the server for processing
+        this.playerSocket.emit('detach', {
+            playerId: this.clientPlayerId
+        });
+
+    }
+
     /**
      * Updates the physics of the client player.
      */
@@ -962,7 +1001,6 @@ class ClientGameLogic extends GameLogic {
         this.clientPlayer.previousState.position = vector.generate(this.clientPlayer.position);
         let displacement = this.processDirectionInputs(this.clientPlayer);
         this.clientPlayer.position = vector.add(this.clientPlayer.position, displacement);
-        this.clientPlayer.stateTime = this.localTime;
     }
 
     /**
@@ -1213,7 +1251,7 @@ class ClientGameLogic extends GameLogic {
         this.blocks = data.blocks;
 
         // set the camera to track the client player
-        this.camera.setTarget(this.clientPlayer, this.viewport.width / 2, this.viewport.height / 2);
+        this.camera.setTarget(this.clientPlayer, this.canvas.width / 2, this.canvas.height / 2);
 
         // obtain the server time based on ping data
         this.serverTime = data.time + this.netLatency;
@@ -1295,7 +1333,18 @@ function trapezoid(context, color, x1, y1, x2, y2, x3, y3, x4, y4){
     context.fill();
 }
 
-// TODO comments
+/**
+ * Draws a rectangle in the given context.
+ * @param context The context on which ot render the rectangle.
+ * @param x The x coordinate of the upper-left corner of the rectangle.
+ * @param y The y coordinate of the upper-left corner of the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @param lineWidth The outline width of the rectangle.
+ * @param fillColor The fill color of the rectangle.
+ * @param outlineColors An object containing an outline color for each edge
+ * of the rectangle.
+ */
 function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outlineColors){
 
     outlineColors = outlineColors || {
@@ -1393,6 +1442,7 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outli
 class Block {
     constructor(x, y, color) {
         this.position = vector.construct(x, y);
+        this.velocity = vector.construct();
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
         this.color = color || BLOCK_COLOR;
         this.health = MAX_HEALTH;
@@ -1412,6 +1462,10 @@ class Block {
             outlineColors
         );
     }
+
+    static incrementVelocity(block) {
+        // TODO implement
+    }
 }
 
 
@@ -1430,7 +1484,6 @@ class Player {
         this.previousState = {
             position: vector.construct()
         };
-        this.stateTime = new Date().getTime(); // TODO remove?
 
         // store the blocks a player has
         this.blocks = [new Block(0, 0, this.color)];
@@ -1473,8 +1526,8 @@ class Player {
                 SQUARE_OUTLINE_COLOR_DEFAULT
             );
 
-            let xOffset = player.blocks[i].position.x * (SQUARE_SIZE + OUTLINE_SIZE / 2);
-            let yOffset = player.blocks[i].position.y * (SQUARE_SIZE + OUTLINE_SIZE / 2);
+            let xOffset = player.blocks[i].position.x * (SQUARE_SEPARATION);
+            let yOffset = player.blocks[i].position.y * (SQUARE_SEPARATION);
 
             let xPosition = player.position.x - player.size.x / 2 + xOffset;
             let yPosition = player.position.y - player.size.y / 2 + yOffset;

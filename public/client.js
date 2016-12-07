@@ -17,56 +17,55 @@ function getMousePosition(canvas, event) {
     );
 }
 
+// the key code to trigger attachment and detachment (the 'c' key)
+const ATTACH_KEY_CODE = 67;
+
 window.onload = function () {
 
     // obtain a reference to the canvas
     let canvas = document.getElementById('canvas');
 
-    // set the wdth of the canvas to the width of the client's screen
-    canvas.width = window.innerWidth; //document.body.clientWidth;
-    canvas.height = window.innerHeight; //document.body.clientHeight;
+    // set the width of the canvas to the width of the client's screen
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     console.log(document.body.clientHeight);
 
     // create the camera object for the game
     let camera = new Camera(0, 0, canvas.width, canvas.height, world.width, world.height);
-    //console.log('(' + canvas.width + ', ' + canvas.height + ')');
-    //console.log(camera);
 
     // create the game logic object to simulate the client-side game
     let gameLogic = new ClientGameLogic(camera);
 
     // create a reference to the canvas and reset the dimensions
-    gameLogic.viewport = canvas;
+    gameLogic.canvas = canvas;
 
     // create a reference to the rendering context for drawing
-    gameLogic.context = gameLogic.viewport.getContext('2d');
+    gameLogic.context = gameLogic.canvas.getContext('2d');
 
     // add a mouse listener to report mouse position
-    gameLogic.viewport.addEventListener('mousemove', function (event) {
-        gameLogic.clientState.mousePosition = getMousePosition(gameLogic.viewport, event);
+    gameLogic.canvas.addEventListener('mousemove', function (event) {
+        gameLogic.clientState.mousePosition = getMousePosition(gameLogic.canvas, event);
     }, false);
 
-    // add key-pressed event for the space bar to toggle movement
-
-    window.addEventListener('keypress', function (event) {
-        if (event.keyCode === 0 || event.keyCode === 32) {
-            event.preventDefault();
+    // add key-pressed event for movement, attachment, detachment
+    window.addEventListener('keyup', function (event) {
+        event.preventDefault();
+        let character = event.which || event.keyCode;
+        if (character === 0 || character === 32) {
+            // toggle movement
             gameLogic.clientState.movementEnabled = !gameLogic.clientState.movementEnabled;
-        }
-
-    });
-
-    // // add key-pressed event C key to attach to a block
-    window.addEventListener('keydown', function (event) {
-        if (event.which === 67) {
-            event.preventDefault();
+        } else if (character === ATTACH_KEY_CODE && !event.shiftKey) {
+            // attach to the candidate block
             gameLogic.attach();
+        } else if (character === ATTACH_KEY_CODE && event.shiftKey) {
+            // detach the most recently added block
+            gameLogic.detach();
         }
     });
+
 
     // add a window-resize listener to update the camera if the window is resized
     window.addEventListener('resize', function () {
-        console.log('resize event captured');
         // resize the canvas
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
