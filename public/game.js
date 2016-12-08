@@ -25,10 +25,13 @@ const OUTLINE_SIZE = 4;
 const SQUARE_SEPARATION = SQUARE_SIZE + OUTLINE_SIZE / 2;
 
 // the fill color of the player's square
-const PLAYER_COLOR = 'rgb(45, 48, 146)';
+const SQUARE_COLOR_PLAYER = 'rgb(45, 48, 146)';
 
 // the fill color of blocks
-const BLOCK_COLOR = 'rgb(0, 173, 238)';
+const SQUARE_COLOR_BLOCK = 'rgb(0, 173, 238)';
+
+// the fill color of solutions blocks
+const SQUARE_COLOR_SOLUTION = 'rgb(120, 120, 120)';
 
 // the default outline color of a player
 const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
@@ -345,7 +348,7 @@ const vector = {
      * with the given components.
      */
     construct: function (x, y) {
-        x = x|| 0;
+        x = x || 0;
         y = y || 0;
         return {
             x: x,
@@ -383,6 +386,15 @@ class GameLogic {
 
         this.players = {};
         this.blocks = {};
+
+        this.solution = [
+            vector.construct(),
+            vector.construct(0, 1),
+            vector.construct(0, 2),
+            vector.construct(1, 0),
+            vector.construct(2, 0),
+            vector.construct(2, 1)
+        ];
 
         // set up movement constants
         this.MAX_DIRECTION_MAGNITUDE = 400.0;
@@ -470,27 +482,26 @@ class GameLogic {
     }
 
 
-    // TODO restructure
-    static checkCollisions(item) {
+    static checkCollisions(blockObject) {
 
-        //Left wall.
-        if(item.position.x <= item.positionLimits.xMin) {
-            item.position.x = item.positionLimits.xMin;
+        // left wall collision
+        if(blockObject.position.x <= SQUARE_SIZE) {
+            blockObject.position.x = SQUARE_SIZE;
         }
 
-        //Right wall
-        if(item.position.x >= item.positionLimits.xMax ) {
-            item.position.x = item.positionLimits.xMax;
+        // right wall collision
+        if(blockObject.position.x >= world.width - SQUARE_SIZE) {
+            blockObject.position.x = world.width - SQUARE_SIZE;
         }
 
-        //Roof wall.
-        if(item.position.y <= item.positionLimits.yMin) {
-            item.position.y = item.positionLimits.yMin;
+        // top wall collision
+        if(blockObject.position.y <= SQUARE_SIZE) {
+            blockObject.position.y = SQUARE_SIZE;
         }
 
-        //Floor wall
-        if(item.position.y >= item.positionLimits.yMax ) {
-            item.position.y = item.positionLimits.yMax;
+        // bottom wall collision
+        if(blockObject.position.y >= world.height - SQUARE_SIZE) {
+            blockObject.position.y = world.height - SQUARE_SIZE;
         }
     }
 
@@ -607,7 +618,9 @@ class ServerGameLogic extends GameLogic {
     }
 
     detach(playerId) {
-
+        if (!this.players[playerId]) {
+            return;
+        }
         // remove the most recently added block
         let block = this.players[playerId].blocks.pop();
 
@@ -829,10 +842,29 @@ class ClientGameLogic extends GameLogic {
         let x = world.width / 2 - numCols * SQUARE_SEPARATION - this.camera.xView;
         let y = world.height / 2 - numRows * SQUARE_SEPARATION - this.camera.yView;
 
+        // draw the solution
+        this.context.fillStyle = SQUARE_COLOR_SOLUTION;
+        for (let i = 0; i < this.solution.length; i++) {
+            this.context.fillRect(
+                x + this.solution[i].x * SQUARE_SEPARATION,
+                y + this.solution[i].y * SQUARE_SEPARATION,
+                SQUARE_SIZE + OUTLINE_SIZE / 2,
+                SQUARE_SIZE + OUTLINE_SIZE / 2
+            );
+        }
+
         // draw vertical lines
         for (let columnNumber = 0; columnNumber < numCols; columnNumber++) {
-            this.context.moveTo(x + columnNumber * SQUARE_SEPARATION, y);
-            this.context.lineTo(x + columnNumber * SQUARE_SEPARATION, y + (numRows  - 1) * SQUARE_SEPARATION);
+            let yStart = y;
+            let yEnd = y + (numRows  - 1) * SQUARE_SEPARATION;
+
+            // draw the first and last column lines longer to correct corners
+            if (columnNumber == 0 || columnNumber == numCols - 1) {
+                yStart -= OUTLINE_SIZE / 4;
+                yEnd += OUTLINE_SIZE / 4 ;
+            }
+            this.context.moveTo(x + columnNumber * SQUARE_SEPARATION, yStart);
+            this.context.lineTo(x + columnNumber * SQUARE_SEPARATION, yEnd);
         }
 
         // draw horizontal lines
@@ -841,10 +873,10 @@ class ClientGameLogic extends GameLogic {
             this.context.lineTo(x + (numCols -1 ) * SQUARE_SEPARATION, y + rowNumber * SQUARE_SEPARATION);
         }
 
-
         this.context.strokeStyle = 'rgb(255, 255, 255)';
-        this.context.lineWidth = OUTLINE_SIZE / 2; // TODO why must this be divided by 2
+        this.context.lineWidth = OUTLINE_SIZE / 2;
         this.context.stroke();
+
 
     }
 
@@ -1023,7 +1055,7 @@ class ClientGameLogic extends GameLogic {
         // );
         // block.health = MAX_HEALTH;
 
-       // send a detach event to the server for processing
+        // send a detach event to the server for processing
         this.playerSocket.emit('detach', {
             playerId: this.clientPlayerId
         });
@@ -1485,7 +1517,7 @@ class Block {
         this.position = vector.construct(x, y);
         this.velocity = vector.construct();
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
-        this.color = color || BLOCK_COLOR;
+        this.color = color || SQUARE_COLOR_BLOCK;
         this.health = MAX_HEALTH;
     }
 
@@ -1515,7 +1547,7 @@ class Block {
 class Player {
     constructor() {
         // initialize rendering values
-        this.color = PLAYER_COLOR;
+        this.color = SQUARE_COLOR_PLAYER;
 
         // set initial current state values
         this.position = vector.construct(20, 20);
