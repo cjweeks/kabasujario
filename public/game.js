@@ -363,6 +363,17 @@ const vector = {
      */
     print: function (v) {
         return '(' + v.x + ', ' + v.y + ')';
+    },
+
+    /**
+     * Returns true if the components of the two vectors
+     * are equal.
+     * @param u The first vector to compare.
+     * @param v The second vector to compare.
+     * @returns {boolean}
+     */
+    isEqual: function (u, v) {
+        return u.x == v.x && u.y == v.y;
     }
 };
 
@@ -618,7 +629,7 @@ class ServerGameLogic extends GameLogic {
     }
 
     detach(playerId) {
-        if (!this.players[playerId]) {
+        if (!this.players[playerId] || this.players[playerId].blocks.length < 2) {
             return;
         }
         // remove the most recently added block
@@ -1012,13 +1023,23 @@ class ClientGameLogic extends GameLogic {
         try {
             // determine the relative position of the new block
             let relativePosition = edge.getRelativePosition(this.clientPlayer.activeEdge);
-
-            // add an offset for the active block the new block is attaching to
-            console.log('attaching to block ' + this.clientPlayer.activeBlockIndex);
             relativePosition = vector.add(
                 relativePosition,
                 this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
             );
+            // check if the client player already has a block at the relative position
+            for (let i = 0; i < this.clientPlayer.blocks.length; i++) {
+                if (vector.isEqual(this.clientPlayer.blocks[i].position, relativePosition)) {
+                    return;
+                }
+            }
+
+            // add an offset for the active block the new block is attaching to
+            console.log('attaching to block ' + this.clientPlayer.activeBlockIndex);
+            // relativePosition = vector.add(
+            //     relativePosition,
+            //     this.clientPlayer.blocks[this.clientPlayer.activeBlockIndex].position
+            // );
 
             // TODO determine whether or not this should happen on the client before the server
             // add a new block to the client player's list
@@ -1570,14 +1591,6 @@ class Player {
         this.candidateBlockId = '';
         this.activeBlockIndex = 0;
         this.activeEdge = edge.NONE;
-
-        // TODO move this from player
-        this.positionLimits = {
-            xMin: this.size.x,
-            xMax: world.width - this.size.x,
-            yMin: this.size.y,
-            yMax: world.height - this.size.y
-        };
     }
 
     /**
