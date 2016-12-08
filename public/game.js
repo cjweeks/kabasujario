@@ -402,10 +402,13 @@ class GameLogic {
             vector.construct(),
             vector.construct(0, 1),
             vector.construct(0, 2),
+            vector.construct(0, 3),
             vector.construct(1, 0),
             vector.construct(2, 0),
             vector.construct(2, 1)
         ];
+        this.solutionWidth = 3;
+        this.solutionHeight = 4;
 
         // set up movement constants
         this.MAX_DIRECTION_MAGNITUDE = 400.0;
@@ -853,12 +856,15 @@ class ClientGameLogic extends GameLogic {
         let x = world.width / 2 - numCols * SQUARE_SEPARATION - this.camera.xView;
         let y = world.height / 2 - numRows * SQUARE_SEPARATION - this.camera.yView;
 
+        let xOffset = Math.floor((numCols - this.solutionWidth) / 2) * SQUARE_SEPARATION;
+        let yOffset = Math.ceil((numRows - this.solutionHeight) / 2) * SQUARE_SEPARATION;
+
         // draw the solution
         this.context.fillStyle = SQUARE_COLOR_SOLUTION;
         for (let i = 0; i < this.solution.length; i++) {
             this.context.fillRect(
-                x + this.solution[i].x * SQUARE_SEPARATION,
-                y + this.solution[i].y * SQUARE_SEPARATION,
+                x + xOffset + this.solution[i].x * SQUARE_SEPARATION,
+                y + yOffset + this.solution[i].y * SQUARE_SEPARATION,
                 SQUARE_SIZE + OUTLINE_SIZE / 2,
                 SQUARE_SIZE + OUTLINE_SIZE / 2
             );

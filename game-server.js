@@ -25,7 +25,15 @@ const exports = module.exports = {
         this.numGames--;
     },
     removePlayer: function (gameId, playerId) {
+        if (!this.games[gameId]) {
+            return;
+        }
         this.games[gameId].removePlayer(playerId);
+        if (!this.games[gameId].numPlayers) {
+            console.log('Deleting game ' + gameId);
+            delete this.games[gameId];
+            this.numGames--;
+        }
     }
 
 };
