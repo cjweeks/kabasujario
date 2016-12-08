@@ -1,17 +1,14 @@
 Kabsujario Message Structures
 
-
 server-update {
 	time: --,
 	players: {id: player, ...},
 	blocks: {id: block, ...}
 }
 
-
 ping {
 	time: --
 }
-
 
 connected {
 	time: --,
@@ -24,7 +21,6 @@ input {
 	direction: Vector(), // mouse direction
 	number: -- // input number
 }
-
 
 player-added {
 	playerId: --,
@@ -39,4 +35,8 @@ attach {
     playerId: --,
     blockId: --,
     relativePosition: {x: --, y: --}
+}
+
+detach {
+    playerId: --
 }
