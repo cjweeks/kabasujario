@@ -42,6 +42,13 @@ const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgb(255, 40, 242)';
 // the maximum distance a player can be from a block to attach to it.
 const MAX_PICKUP_DISTANCE = 2 * SQUARE_SIZE;
 
+// the number of rows for the puzzle grid
+const NUM_ROWS = 16;
+
+// the number of columns for the puzzle grid
+const NUM_COLS = 11;
+
+
 const MAX_HEALTH = 100;
 
 /**
@@ -496,6 +503,7 @@ class GameLogic {
     }
 
 
+    // TODO rewrite this to check collisions with blocks
     static checkCollisions(blockObject) {
 
         // left wall collision
@@ -847,17 +855,13 @@ class ClientGameLogic extends GameLogic {
      * Draws the puzzle grid and the current solutions.
      */
     drawPuzzle() {
-        // draw a grid in the center of the
-        // TODO create constants
-        let numRows = 16;
-        let numCols = 11;
-
+        // draw a grid in the center of the world
         // define the x and y coordinates of the top left of the grid
-        let x = world.width / 2 - numCols * SQUARE_SEPARATION - this.camera.xView;
-        let y = world.height / 2 - numRows * SQUARE_SEPARATION - this.camera.yView;
+        let x = world.width / 2 - NUM_COLS * SQUARE_SEPARATION - this.camera.xView;
+        let y = world.height / 2 - NUM_ROWS * SQUARE_SEPARATION - this.camera.yView;
 
-        let xOffset = Math.floor((numCols - this.solutionWidth) / 2) * SQUARE_SEPARATION;
-        let yOffset = Math.ceil((numRows - this.solutionHeight) / 2) * SQUARE_SEPARATION;
+        let xOffset = Math.floor((NUM_COLS - this.solutionWidth) / 2) * SQUARE_SEPARATION;
+        let yOffset = Math.ceil((NUM_ROWS - this.solutionHeight) / 2) * SQUARE_SEPARATION;
 
         // draw the solution
         this.context.fillStyle = SQUARE_COLOR_SOLUTION;
@@ -871,12 +875,12 @@ class ClientGameLogic extends GameLogic {
         }
 
         // draw vertical lines
-        for (let columnNumber = 0; columnNumber < numCols; columnNumber++) {
+        for (let columnNumber = 0; columnNumber < NUM_COLS; columnNumber++) {
             let yStart = y;
-            let yEnd = y + (numRows  - 1) * SQUARE_SEPARATION;
+            let yEnd = y + (NUM_ROWS  - 1) * SQUARE_SEPARATION;
 
             // draw the first and last column lines longer to correct corners
-            if (columnNumber == 0 || columnNumber == numCols - 1) {
+            if (columnNumber == 0 || columnNumber == NUM_COLS - 1) {
                 yStart -= OUTLINE_SIZE / 4;
                 yEnd += OUTLINE_SIZE / 4 ;
             }
@@ -885,9 +889,9 @@ class ClientGameLogic extends GameLogic {
         }
 
         // draw horizontal lines
-        for (let rowNumber = 0; rowNumber < numRows; rowNumber++) {
+        for (let rowNumber = 0; rowNumber < NUM_ROWS; rowNumber++) {
             this.context.moveTo(x, y + rowNumber * SQUARE_SEPARATION);
-            this.context.lineTo(x + (numCols -1 ) * SQUARE_SEPARATION, y + rowNumber * SQUARE_SEPARATION);
+            this.context.lineTo(x + (NUM_COLS -1 ) * SQUARE_SEPARATION, y + rowNumber * SQUARE_SEPARATION);
         }
 
         this.context.strokeStyle = 'rgb(255, 255, 255)';

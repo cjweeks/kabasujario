@@ -11,11 +11,9 @@ class Rectangle {
         this.right = this.left + this.width;
         this.bottom = this.top + this.height;
     }
-
     set(left, top, /*optional*/width, /*optional*/height) {
         width = width || this.width;
         height = height || this.height;
-
         this.left = left;
         this.top = top;
         this.width = width;
@@ -23,7 +21,6 @@ class Rectangle {
         this.right = this.left + this.width;
         this.bottom = this.top + this.height;
     }
-
     within(r) {
         return (
             r.left <= this.left &&
