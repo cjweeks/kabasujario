@@ -507,44 +507,39 @@ class GameLogic {
     // TODO FINISH rewriting this to check collisions with blocks
     checkCollisions(blockObject) {
 
-        for (let blockId in this.blocks) {
-
-            if (this.blocks.hasOwnProperty(blockId)) {
-                // console.log(blockId);
-                // console.log(blockObject);
-                //if (blockId != blockObject.id) {
-                // console.log("Checking block collisions");
-                //console.log(this.blocks[blockId].position.x);
-                //check if collision on the right side of the player block
-                if(Math.abs(blockObject.position.x + SQUARE_SIZE + OUTLINE_SIZE - this.blocks[blockId].position.x) <= SQUARE_SIZE + OUTLINE_SIZE
-                    && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE){
-                    console.log("MATCH!");
-
-                }
-                //check if collision on the left side of the player block
-                if(Math.abs(this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.x) <= SQUARE_SIZE + OUTLINE_SIZE
-                    && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE){
-                    console.log("MATCH LEFT!");
-
-                }
-
-                        //check if collision on the bottom side of the player block
-                        if ( blockObject.position.y - SQUARE_SIZE == this.blocks[blockId].position.y ) {
-                           // console.log("Collision!");
-                            // blockObject.position.y = world.height - SQUARE_SIZE;
-
-                        }
-
-                        //check if collision on the top side of the player block
-                        if (blockObject.position.y == this.blocks[blockId].position.y - SQUARE_SIZE ) {
-                           // console.log("Collision!");
-                            // blockObject.position.y = world.height - SQUARE_SIZE;
-
-                        }
-
-                //}
-            }
-        }
+        // for (let blockId in this.blocks) {
+        //
+        //     if (this.blocks.hasOwnProperty(blockId)) {
+        //         // console.log(blockId);
+        //         // console.log(blockObject);
+        //         //if (blockId != blockObject.id) {
+        //         // console.log("Checking block collisions");
+        //         //console.log(this.blocks[blockId].position.x);
+        //         //check if collision on the right side of the player block
+        //         if(Math.abs(blockObject.position.x + SQUARE_SIZE + OUTLINE_SIZE - this.blocks[blockId].position.x) <= SQUARE_SIZE + OUTLINE_SIZE
+        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE){
+        //             blockObject.position.x = this.blocks[blockId].position.x - SQUARE_SIZE - OUTLINE_SIZE;
+        //         }
+        //         //check if collision on the left side of the player block
+        //        else if(Math.abs(this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.x) <= SQUARE_SIZE + OUTLINE_SIZE
+        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE){
+        //             blockObject.position.x = this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE;
+        //         }
+        //         //check if collision on the bottom side of the player block
+        //       else if(Math.abs(blockObject.position.y + SQUARE_SIZE + OUTLINE_SIZE - this.blocks[blockId].position.y) <= SQUARE_SIZE + OUTLINE_SIZE
+        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE){
+        //             blockObject.position.y = this.blocks[blockId].position.y - SQUARE_SIZE - OUTLINE_SIZE;
+        //         }
+        //
+        //                 //check if collision on the top side of the player block
+        //       else if(Math.abs(this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.y) <= SQUARE_SIZE + OUTLINE_SIZE
+        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE){
+        //             blockObject.position.y = this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE;
+        //         }
+        //
+        //         //}
+        //     }
+        // }
         // left wall collision
         if(blockObject.position.x <= SQUARE_SIZE) {
             blockObject.position.x = SQUARE_SIZE;
@@ -704,11 +699,11 @@ class ServerGameLogic extends GameLogic {
      * Generates a set of randomly places blocks
      * @param numBlocks The number of blocks to generate.
      */
-    // TODO Change max of for loop back
+
     generateBlocks(numBlocks) {
-        for (let i = 0; i < 1; i++) {
-            let x = 100; //getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
-            let y = 100;// getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
+        for (let i = 0; i < numBlocks; i++) {
+            let x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
+            let y =  getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
             let blockId = uuid();
             this.blocks[blockId] = new Block(x, y);
         }
