@@ -400,6 +400,7 @@ const world = {
  * this object corresponds to.
  */
 class GameLogic {
+
     constructor() {
 
         this.players = {};
@@ -503,12 +504,51 @@ class GameLogic {
     }
 
 
-    // TODO rewrite this to check collisions with blocks
-    static checkCollisions(blockObject) {
+    // TODO FINISH rewriting this to check collisions with blocks
+    checkCollisions(blockObject) {
 
+        for (let blockId in this.blocks) {
+
+            if (this.blocks.hasOwnProperty(blockId)) {
+                // console.log(blockId);
+                // console.log(blockObject);
+                 //if (blockId != blockObject.id) {
+                    // console.log("Checking block collisions");
+
+                        //check if collision on the right side of the player block
+                        if (blockObject.position.x + SQUARE_SIZE == this.blocks[blockId].position.x ) {
+                            console.log("Collision!");
+                            // blockObject.position.y = world.height - SQUARE_SIZE;
+                        }
+                        //check if collision on the left side of the player block
+                        if (blockObject.position.x == this.blocks[blockId].position.x + SQUARE_SIZE ) {
+                            console.log("Collision!");
+                            // blockObject.position.y = world.height - SQUARE_SIZE;
+
+                        }
+
+                        //check if collision on the top side of the player block
+                        if ( blockObject.position.y - SQUARE_SIZE == this.blocks[blockId].position.y ) {
+                            console.log("Collision!");
+                            // blockObject.position.y = world.height - SQUARE_SIZE;
+
+                        }
+
+                        //check if collision on the bottom side of the player block
+                        if (blockObject.position.y == this.blocks[blockId].position.y - SQUARE_SIZE ) {
+                            console.log("Collision!");
+                            // blockObject.position.y = world.height - SQUARE_SIZE;
+
+                        }
+
+                //}
+            }
+        }
         // left wall collision
         if(blockObject.position.x <= SQUARE_SIZE) {
             blockObject.position.x = SQUARE_SIZE;
+
+
         }
 
         // right wall collision
@@ -525,7 +565,39 @@ class GameLogic {
         if(blockObject.position.y >= world.height - SQUARE_SIZE) {
             blockObject.position.y = world.height - SQUARE_SIZE;
         }
+
+            // for(let i = 0; i < this.constructor.blocks; i++) {
+            //
+            //     //check if collision on the right side of the player block
+            //     if (blockObject.x + SQUARE_SIZE == this.constructor.blocks[i].x ) {
+            //         console.log("Collision!");
+            //         blockObject.position.y = world.height - SQUARE_SIZE;
+            //
+            //
+            //     }
+            //     //check if collision on the left side of the player block
+            //     if (blockObject.x == this.constructor.blocks[i].x + SQUARE_SIZE ) {
+            //         console.log("Collision!");
+            //         blockObject.position.y = world.height - SQUARE_SIZE;
+            //
+            //     }
+            //
+            //     //check if collision on the top side of the player block
+            //     if (this.constructor.blocks[i].y == blockObject.y - SQUARE_SIZE ) {
+            //         console.log("Collision!");
+            //         blockObject.position.y = world.height - SQUARE_SIZE;
+            //
+            //     }
+            //
+            //     //check if collision on the bottom side of the player block
+            //     if (this.constructor.blocks[i].y - SQUARE_SIZE == blockObject.y ) {
+            //         console.log("Collision!");
+            //         blockObject.position.y = world.height - SQUARE_SIZE;
+            //
+            //     }
+            // }
     }
+    
 
     /**
      * Processes a string of the given player's inputs.
@@ -619,6 +691,8 @@ class ServerGameLogic extends GameLogic {
         }
     }
 
+
+
     updatePhysics() {
         // update player positions
         for (let playerId in this.players) {
@@ -632,7 +706,7 @@ class ServerGameLogic extends GameLogic {
                     displacement
                 );
 
-                GameLogic.checkCollisions(player);
+                super.checkCollisions(player);
                 // clear all inputs that we have processed
                 player.inputs = [];
             }
@@ -787,6 +861,9 @@ class ClientGameLogic extends GameLogic {
         // determine if a block is close enough to the client player to attach
         this.determineCandidateBlock();
 
+
+
+
         // draw the puzzle grid and solutions
         this.drawPuzzle();
 
@@ -799,6 +876,8 @@ class ClientGameLogic extends GameLogic {
         // schedule the next update
         this.scheduleUpdate();
     }
+
+
 
 
     /**
@@ -1017,6 +1096,10 @@ class ClientGameLogic extends GameLogic {
             this.clientPlayer.activeEdge = edge.NONE;
         }
     }
+
+
+
+
 
     /**
      * Attempts to attach the candidate block to the the player.
