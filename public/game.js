@@ -527,63 +527,49 @@ class GameLogic {
     }
 
 
-    // TODO FINISH rewriting this to check collisions with blocks
-    checkCollisions(blockObject, displacement) {
+    // TODO finish writing for all secondary blocks in player
+    checkCollisions(player) {
 
+        // check collisions for each free floating block
+        for (let blockId in this.blocks) {
+            if (this.blocks.hasOwnProperty(blockId)) {
+                // get a vector pointing from the object to the block
+                let direction = vector.subtract(this.blocks[blockId].position, player.position);
+                let closestEdge = edge.getEdgeFromDirection(direction);
 
+                // reset the position if a block is overlapping
+                if (closestEdge == edge.TOP && direction.y < SQUARE_SEPARATION) {
+                    player.position.y -= SQUARE_SEPARATION - direction.y;
+                } else if (closestEdge == edge.BOTTOM && direction.y > -SQUARE_SEPARATION) {
+                    player.position.y += SQUARE_SEPARATION + direction.y
+                } else if (closestEdge == edge.RIGHT && direction.x > -SQUARE_SEPARATION) {
+                    player.position.x += SQUARE_SEPARATION + direction.x;
+                } else if (closestEdge == edge.LEFT && direction.x < SQUARE_SEPARATION) {
+                    player.position.x -= SQUARE_SEPARATION - direction.x;
+                }
+            }
+        }
 
-        // for (let blockId in this.blocks) {
-        //     if (this.blocks.hasOwnProperty(blockId)) {
-        //         //if (blockId != blockObject.id) {
-        //
-        //        // check if collision on the right side of the player block
-        //         if(Math.abs(blockObject.position.x + (SQUARE_SIZE/2)  - this.blocks[blockId].position.x) <= (SQUARE_SIZE/2)
-        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < (SQUARE_SIZE/2) + OUTLINE_SIZE && displacement.x >0 ){
-        //             blockObject.position.x = this.blocks[blockId].position.x - (SQUARE_SIZE/2) - OUTLINE_SIZE;
-        //             displacement.x = 0;
-        //         }
-        //         //check if collision on the left side of the player block
-        //        else if(Math.abs(this.blocks[blockId].position.x + SQUARE_SIZE  - blockObject.position.x) <= SQUARE_SIZE
-        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE + OUTLINE_SIZE &&
-        //             displacement.x < 0 ){
-        //             blockObject.position.x = this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE;
-        //             displacement.x = 0;
-        //         }
-        //         //check if collision on the bottom side of the player block
-        //       else if(Math.abs(blockObject.position.y + SQUARE_SIZE  - this.blocks[blockId].position.y) <= SQUARE_SIZE
-        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y > 0){
-        //             blockObject.position.y = this.blocks[blockId].position.y - SQUARE_SIZE - OUTLINE_SIZE;
-        //             displacement.y = 0;
-        //         }
-        //
-        //                 //check if collision on the top side of the player block
-        //       else if(Math.abs(this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.y) <= SQUARE_SIZE
-        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y < 0){
-        //             blockObject.position.y = this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE;
-        //             displacement.y = 0;
-        //         }
-        //
-        //         //}
-        //     }
-        // }
+        // check collisions with the world borders
+
         // left wall collision
-        if(blockObject.position.x <= SQUARE_SIZE) {
-            blockObject.position.x = SQUARE_SIZE;
+        if(player.position.x <= SQUARE_SIZE) {
+            player.position.x = SQUARE_SIZE;
         }
 
         // right wall collision
-        if(blockObject.position.x >= world.width - SQUARE_SIZE) {
-            blockObject.position.x = world.width - SQUARE_SIZE;
+        if(player.position.x >= world.width - SQUARE_SIZE) {
+            player.position.x = world.width - SQUARE_SIZE;
         }
 
         // top wall collision
-        if(blockObject.position.y <= SQUARE_SIZE) {
-            blockObject.position.y = SQUARE_SIZE;
+        if(player.position.y <= SQUARE_SIZE) {
+            player.position.y = SQUARE_SIZE;
         }
 
         // bottom wall collision
-        if(blockObject.position.y >= world.height - SQUARE_SIZE) {
-            blockObject.position.y = world.height - SQUARE_SIZE;
+        if(player.position.y >= world.height - SQUARE_SIZE) {
+            player.position.y = world.height - SQUARE_SIZE;
         }
     }
 
@@ -694,7 +680,7 @@ class ServerGameLogic extends GameLogic {
                     displacement
                 );
 
-                this.checkCollisions(player, displacement);
+                this.checkCollisions(player);
 
                 // check the solutions
                 this.processSolutionLogic();
@@ -1354,6 +1340,7 @@ class ClientGameLogic extends GameLogic {
         this.clientPlayer.previousState.position = vector.generate(this.clientPlayer.position);
         let displacement = this.processDirectionInputs(this.clientPlayer);
         this.clientPlayer.position = vector.add(this.clientPlayer.position, displacement);
+        this.checkCollisions(this.clientPlayer);
     }
 
     /**
