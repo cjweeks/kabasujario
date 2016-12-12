@@ -889,26 +889,22 @@ class ServerGameLogic extends GameLogic {
 
     generateBlocks(numBlocks) {
         for (let i = 0; i < numBlocks; i++) {
-
-
+            // generate random x and y coordinates for the new block
             let x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
             let y =  getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
 
-            if(x >= world.width / 2 - NUM_COLS * SQUARE_SEPARATION  &&
-                x < world.width / 2 - NUM_COLS * SQUARE_SEPARATION  + (NUM_COLS * SQUARE_SIZE) &&
-                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION  &&
-                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION + (NUM_ROWS * SQUARE_SIZE)){
+            // if the position falls inside the solution grid, discard the created point and try again
+            if(x >= world.width / 2 - NUM_COLS * SQUARE_SEPARATION &&
+                x < world.width / 2 - NUM_COLS * SQUARE_SEPARATION  + NUM_COLS * SQUARE_SIZE &&
+                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION &&
+                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION + NUM_ROWS * SQUARE_SIZE){
 
                 i--;
-
-            }
-            else{
-
+            } else {
+                // generate a block at the created position
                 let blockId = uuid();
                 this.blocks[blockId] = new Block(x, y);
-
             }
-
         }
     }
 
@@ -1933,12 +1929,13 @@ class Player {
      */
     static lightCopy(player) {
         let copy = new Player();
-        Object.assign(copy.position, player.position);
-        Object.assign(copy.previousState.position, player.previousState.position);
-        Object.assign(copy.inputs, player.inputs);
+        copy.position = player.position;
+        copy.previousState.position = player.previousState.position;
+        copy.inputs = player.inputs;
         copy.blocks = player.blocks;
         copy.lastRenderedInputNumber = player.lastRenderedInputNumber;
         copy.lastInputTime = player.lastInputTime;
+        copy.score = player.score;
         return copy;
     }
 }
