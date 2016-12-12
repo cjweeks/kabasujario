@@ -12,43 +12,13 @@
 
 <body>
 <h1>Kabasujario</h1>
-<div id = "playerName" hidden = "hidden">
     <form method="post">
-
-
         <label for="name">Name:</label>
         <input class="search" type="text" id="name" name="name">
         <br>
-        <a type="submit" href="index.html" onclick = 'storePlayerName();' class="button">Create user and start playing!</a>
+        <a type="submit" href="index.html"  class="button">Create user and start playing!</a>
         <!--<button class="button" type="submit" href = "index.html">Start playing!</button>-->
     </form>
-</div>
-
-
-    <div>
-        <a id="nameExists" href="index.html" class="button">Start playing!</a>
-    </div>
 </body>
 
-<script>
-localStorage.clear();
-    var newNameDiv = document.getElementById('playerName');
-    var start = document.getElementById('nameExists');
-
-    if(localStorage.getItem('name') === null){
-        newNameDiv.removeAttribute("hidden");
-        start.setAttribute('hidden', "");
-    }
-
-    function storePlayerName(){
-        var name  = document.getElementById('name').value;
-        localStorage.setItem('name', name);
-        localStorage.setItem('score', '0');
-    }
-
-
-
-
-
-</script>
 </html>
