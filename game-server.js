@@ -99,7 +99,6 @@ exports.onAttach = function (playerSocket, data) {
 
         // add the block to this copy of the player
         gameLogic.players[data.playerId].blocks.push(new Block(data.relativePosition.x, data.relativePosition.y));
-
     }
 };
 

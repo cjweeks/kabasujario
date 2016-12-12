@@ -25,22 +25,28 @@ const OUTLINE_SIZE = 4;
 const SQUARE_SEPARATION = SQUARE_SIZE + OUTLINE_SIZE / 2;
 
 // the fill color of the player's square
-const SQUARE_COLOR_PLAYER = 'rgb(45, 48, 146)';
+const SQUARE_COLOR_PLAYER = 'rgba(45, 48, 146, 1)';
 
 // the fill color of blocks
-const SQUARE_COLOR_BLOCK = 'rgb(0, 173, 238)';
+const SQUARE_COLOR_BLOCK = 'rgba(0, 173, 238, 1)';
 
 // the fill color of solutions blocks
-const SQUARE_COLOR_SOLUTION = 'rgb(120, 120, 120)';
+const SQUARE_COLOR_SOLUTION = 'rgba(120, 120, 120, 1)';
 
 // the default outline color of a player
-const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgb(255, 255, 255)';
+const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgba(255, 255, 255, 1)';
 
 // the color representing the active edge of a player (the edge that may attach to a block)
-const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgb(255, 40, 242)';
+const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgba(255, 40, 242, 1)';
+
+// the maximum distance a player can be from the solution to become valid
+const MAX_SOLUTION_DISTANCE = SQUARE_SIZE / 2;
 
 // the maximum distance a player can be from a block to attach to it.
 const MAX_PICKUP_DISTANCE = 2 * SQUARE_SIZE;
+
+// the amount of time (in ms) to hold the player in the solution
+const SOLUTION_HOLD_TIME = 2000;
 
 // the number of rows for the puzzle grid
 const NUM_ROWS = 16;
@@ -48,7 +54,7 @@ const NUM_ROWS = 16;
 // the number of columns for the puzzle grid
 const NUM_COLS = 11;
 
-
+// the maximum health value of a block
 const MAX_HEALTH = 100;
 
 /**
@@ -57,6 +63,15 @@ const MAX_HEALTH = 100;
  */
 function onServer() {
     return typeof window == 'undefined' || !window.document;
+}
+
+/**
+ * Sets the opacity of a color string in the form rgba(R, G, B, A)
+ * @param color The color string to alter.
+ * @param opacity The new opacity value.
+ */
+function setOpacity(color, opacity) {
+    return color.replace(/[^,]+(?=\))/, opacity.toString());
 }
 
 // load the uuid module is we are on the server for block generation
@@ -402,10 +417,14 @@ const world = {
 class GameLogic {
 
     constructor() {
-
+        // container holding players identified by their IDs
         this.players = {};
+
+        // container holding blocks identified by their IDs
         this.blocks = {};
 
+        // TODO new colutions must be generated
+        // relative positions specifying the solution
         this.solution = [
             vector.construct(),
             vector.construct(0, 1),
@@ -415,6 +434,10 @@ class GameLogic {
             vector.construct(2, 0),
             vector.construct(2, 1)
         ];
+
+        // whether or not a player has locked to the solution
+        this.solutionOccupied = false;
+
         this.solutionWidth = 3;
         this.solutionHeight = 4;
 
@@ -427,7 +450,7 @@ class GameLogic {
         this.physicsDeltaTime = 0.0001;
         this.physicsPreviousTime = new Date().getTime();
 
-        //A local timer for precision on server and client
+        // define the local timer
         this.localTime = 0.016;
 
         // the local delta time since the last timer tick
@@ -560,7 +583,7 @@ class GameLogic {
             blockObject.position.y = world.height - SQUARE_SIZE;
         }
     }
-    
+
 
     /**
      * Processes a string of the given player's inputs.
@@ -655,7 +678,6 @@ class ServerGameLogic extends GameLogic {
     }
 
 
-
     updatePhysics() {
         // update player positions
         for (let playerId in this.players) {
@@ -670,10 +692,172 @@ class ServerGameLogic extends GameLogic {
                 );
 
                 super.checkCollisions(player);
+
+                // check the solutions
+                this.processSolutionLogic();
                 // clear all inputs that we have processed
                 player.inputs = [];
             }
         }
+    }
+
+    /**
+     * Determines whether or not a player may solve the puzzle
+     * and begins the solution process if so.
+     */
+    processSolutionLogic() {
+        // check if the solution is occupied by another player
+        if (this.solutionOccupied) {
+            return;
+        }
+        // check if a player is in close proximity with a valid solution
+        let result = this.checkSolution();
+        if (!this.players[result.playerId]) {
+            return;
+        }
+
+        // occupy the solution, and lock the player's position for a given amount of time
+        this.solutionOccupied = true;
+        let player = this.players[result.playerId];
+
+        player.playerSocket.emit('set-position', {locked: true}, function () {
+            player.position = result.position;
+            let startTime = new Date().getTime();
+            // decrement the opacity of each block
+            let transparencyIntervalId = setInterval(function() {
+                let currentTime = new Date().getTime();
+                for (let i = 1; i < player.blocks.length; i++) {
+                    player.blocks[i].opacity = Math.max(0, 1 - (1 / SOLUTION_HOLD_TIME) * (currentTime - startTime));
+                }
+            }, PHYSICS_UPDATE_PERIOD);
+            setTimeout(function () {
+                // unlock the player's position, remove their blocks, and update their score
+                player.playerSocket.emit('set-position', {locked: false}, function () {});
+                player.blocks = player.blocks.slice(0, 1);
+                player.score++;
+                this.solutionOccupied = false;
+                // stop decrementing the transparency of the player's blocks
+                clearInterval(transparencyIntervalId);
+            }.bind(this), SOLUTION_HOLD_TIME)
+        }.bind(this));
+    }
+
+    /**
+     * Checks if any player is currently in close enough proximity
+     * to a solution and has the correct block orientations to
+     * complete the solution..
+     * @returns {{playerId: string, position: (*|{x: (*|number), y: (*|number)})}} An object
+     * containing the player id of the player and position of the block for which the
+     * player must bind to, if such a player exists.
+     */
+    checkSolution() {
+
+        // define the result to be returned
+        let result = {
+            playerId: '',
+            position: vector.construct()
+        };
+
+        // return if a player is already in the solution
+        if (this.solutionOccupied) {
+            return result;
+        }
+
+        for (let playerId in this.players) {
+            if (this.players.hasOwnProperty(playerId)) {
+                // check the position of the player's primary block
+                let playerPosition = this.players[playerId].position;
+                for (let i = 0; i < this.solution.length; i++) {
+
+                    // determine where the solution block is
+                    let x = world.width / 2 - NUM_COLS * SQUARE_SEPARATION + SQUARE_SEPARATION / 2;
+                    let y = world.height / 2 - NUM_ROWS * SQUARE_SEPARATION + SQUARE_SEPARATION / 2;
+
+                    let xOffset = Math.floor((NUM_COLS - this.solutionWidth) / 2) * SQUARE_SEPARATION;
+                    let yOffset = Math.ceil((NUM_ROWS - this.solutionHeight) / 2) * SQUARE_SEPARATION;
+
+                    let blockPosition = vector.construct(
+                        x + xOffset + this.solution[i].x * SQUARE_SEPARATION,
+                        y + yOffset + this.solution[i].y * SQUARE_SEPARATION
+                    );
+
+                    // find the distance between the solution block and the player's primary block
+                    let distance = vector.magnitude(vector.subtract(playerPosition, blockPosition));
+
+                    // if the distance is small enough, set the required values and exit the inner loop
+                    if (distance < MAX_SOLUTION_DISTANCE && this.checkSolutionValidity(playerId, this.solution[i])) {
+                        result.playerId = playerId;
+                        result.position = blockPosition;
+                        break;
+                    }
+                }
+                // exit the outer loop if a match has been foujd
+                if (result.playerId) {
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Determines whether or not a player meets the current solution.
+     * @param playerId
+     * @param relativePosition The relative position of the solution
+     * block that the player's primary block is intended to bind to.
+     * @returns {boolean}
+     */
+    checkSolutionValidity(playerId, relativePosition) {
+        if (!this.players[playerId]) {
+            return false;
+        }
+
+        let playerBlocks = this.players[playerId].blocks;
+
+        // checks the lengths of the solution and the player's blocks
+        if (playerBlocks.length != this.solution.length) {
+            return false;
+        }
+
+        // find the minimum x and y offset for the player's blocks
+        let xMin = 0;
+        let yMin = 0;
+        for (let i = 0; i < playerBlocks.length; i++) {
+            if (playerBlocks[i].position.x < xMin) {
+                xMin = playerBlocks[i].position.x;
+            }
+            if (playerBlocks[i].position.y < yMin) {
+                yMin = playerBlocks[i].position.y;
+            }
+        }
+
+        let offset = vector.construct(-xMin, -yMin);
+
+        // check that the relative position of the chosen solution block matches
+        // that of the player's primary block plus the offset above
+        let primaryBlockOffsetPosition = vector.add(playerBlocks[0].position, offset);
+        if (!vector.isEqual(primaryBlockOffsetPosition, relativePosition)) {
+            return false;
+        }
+
+        // check each block in the player against each block in the solution
+        let valid = true;
+        for (let i = 0; i < playerBlocks.length; i++) {
+            // get the current player block's position relative to 0, 0
+            let playerBlockPosition = vector.add(playerBlocks[i].position, offset);
+            let found = false;
+            for (let j = 0; j < this.solution.length; j++) {
+                if (vector.isEqual(playerBlockPosition, this.solution[j])) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                valid = false;
+                break;
+            }
+        }
+        return valid;
     }
 
     detach(playerId) {
@@ -749,6 +933,9 @@ class ClientGameLogic extends GameLogic {
 
         // a reference to the two-dimensional context of the canvas ti render on
         this.context = {};
+
+        // whether or not the position is locked by the server
+        this.lockPosition = false;
 
         // collection of the various client inputs based on the keyboard and mouse
         this.clientState = {
@@ -879,7 +1066,7 @@ class ClientGameLogic extends GameLogic {
 
         // if the player's block is close enough to the mouse or if the player's movement is not enabled,
         // interpret that as a direction of (0, 0)
-        if (vector.magnitude(directionVector) < SQUARE_SIZE / 2 || !this.clientState.movementEnabled) {
+        if (vector.magnitude(directionVector) < SQUARE_SIZE / 2 || !this.clientState.movementEnabled || this.lockPosition) {
             return vector.construct();
         }
 
@@ -912,8 +1099,8 @@ class ClientGameLogic extends GameLogic {
             this.context.fillRect(
                 x + xOffset + this.solution[i].x * SQUARE_SEPARATION,
                 y + yOffset + this.solution[i].y * SQUARE_SEPARATION,
-                SQUARE_SIZE + OUTLINE_SIZE / 2,
-                SQUARE_SIZE + OUTLINE_SIZE / 2
+                SQUARE_SEPARATION,
+                SQUARE_SEPARATION
             );
         }
 
@@ -1348,6 +1535,9 @@ class ClientGameLogic extends GameLogic {
         // handle the reception of a server update
         this.playerSocket.on('server-update', this.onServerUpdate.bind(this));
 
+        // handle the reception of a position set command
+        this.playerSocket.on('set-position', this.onSetPosition.bind(this));
+
         // handle the initial information transferred upon connection
         this.playerSocket.on('connected', this.onConnected.bind(this));
 
@@ -1359,6 +1549,17 @@ class ClientGameLogic extends GameLogic {
 
         // handle the reception of a ping
         this.playerSocket.on('manual-ping', this.onPing.bind(this));
+    }
+
+    /**
+     * Updates the clients position status and sends an
+     * acknowledgement to the server.
+     * @param data The data from the server.
+     * @param callback The function to execute on the server.
+     */
+    onSetPosition(data, callback) {
+        this.lockPosition = data.locked;
+        callback();
     }
 
     /**
@@ -1492,11 +1693,12 @@ function trapezoid(context, color, x1, y1, x2, y2, x3, y3, x4, y4){
  * @param width The width of the rectangle.
  * @param height The height of the rectangle.
  * @param lineWidth The outline width of the rectangle.
+ * @param opacity The opacity of te fill and outlines.
  * @param fillColor The fill color of the rectangle.
  * @param outlineColors An object containing an outline color for each edge
  * of the rectangle.
  */
-function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outlineColors){
+function drawRectangle(context, x, y, width, height, lineWidth, opacity, fillColor, outlineColors){
 
     outlineColors = outlineColors || {
             top: SQUARE_OUTLINE_COLOR_DEFAULT,
@@ -1508,6 +1710,16 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outli
     context.lineWidth = lineWidth;
     // use existing fillStyle if fillStyle is not supplied
     fillColor = fillColor || context.fillStyle;
+
+
+    // set opacities
+    for (let key in outlineColors) {
+        if (outlineColors.hasOwnProperty(key)) {
+            outlineColors[key] = setOpacity(outlineColors[key], opacity);
+        }
+    }
+
+    fillColor = setOpacity(fillColor, opacity);
 
     // use existing strokeStyle if any strokeStyle is not supplied
     const strokeStyle = context.strokeStyle;
@@ -1592,10 +1804,13 @@ function drawRectangle(context, x, y, width, height, lineWidth, fillColor, outli
 
 class Block {
     constructor(x, y, color) {
+        color = color || SQUARE_COLOR_BLOCK;
         this.position = vector.construct(x, y);
         this.velocity = vector.construct();
         this.size = vector.construct(SQUARE_SIZE, SQUARE_SIZE);
-        this.color = color || SQUARE_COLOR_BLOCK;
+        this.color = color;
+        this.outlineColor = SQUARE_OUTLINE_COLOR_DEFAULT;
+        this.opacity = 1;
         this.health = MAX_HEALTH;
     }
 
@@ -1609,13 +1824,14 @@ class Block {
             block.size.x,
             block.size.y,
             OUTLINE_SIZE,
+            block.opacity,
             block.color,
             outlineColors
         );
     }
 
     static incrementVelocity(block) {
-        // TODO implement
+        // TODO implement if needed
     }
 }
 
@@ -1635,6 +1851,8 @@ class Player {
         this.previousState = {
             position: vector.construct()
         };
+
+        this.score = 0;
 
         // store the blocks a player has
         this.blocks = [new Block(0, 0, this.color)];
@@ -1682,6 +1900,7 @@ class Player {
                 player.size.x,
                 player.size.y,
                 OUTLINE_SIZE,
+                player.blocks[i].opacity,
                 player.blocks[i].color,
                 outlineColors
             );
