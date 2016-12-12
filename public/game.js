@@ -702,10 +702,26 @@ class ServerGameLogic extends GameLogic {
 
     generateBlocks(numBlocks) {
         for (let i = 0; i < numBlocks; i++) {
+
+
             let x = getRandomInt(SQUARE_SIZE / 2, world.width - SQUARE_SIZE / 2);
             let y =  getRandomInt(SQUARE_SIZE / 2, world.height - SQUARE_SIZE / 2);
-            let blockId = uuid();
-            this.blocks[blockId] = new Block(x, y);
+
+            if(x >= world.width / 2 - NUM_COLS * SQUARE_SEPARATION  &&
+                x < world.width / 2 - NUM_COLS * SQUARE_SEPARATION  + (NUM_COLS * SQUARE_SIZE) &&
+                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION  &&
+                world.height / 2 - NUM_ROWS * SQUARE_SEPARATION + (NUM_ROWS * SQUARE_SIZE)){
+
+                i--;
+
+            }
+            else{
+
+                let blockId = uuid();
+                this.blocks[blockId] = new Block(x, y);
+
+            }
+
         }
     }
 
