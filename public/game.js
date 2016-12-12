@@ -694,7 +694,7 @@ class ServerGameLogic extends GameLogic {
                     displacement
                 );
 
-                super.checkCollisions(player, displacement);
+                this.checkCollisions(player, displacement);
 
                 // check the solutions
                 this.processSolutionLogic();
