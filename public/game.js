@@ -532,39 +532,40 @@ class GameLogic {
 
 
 
-        for (let blockId in this.blocks) {
-            if (this.blocks.hasOwnProperty(blockId)) {
-                //if (blockId != blockObject.id) {
-
-                //check if collision on the right side of the player block
-                if(Math.abs(blockObject.position.x + SQUARE_SIZE + OUTLINE_SIZE - this.blocks[blockId].position.x) <= SQUARE_SIZE
-                    && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE + OUTLINE_SIZE && displacement.x >0 ){
-                    blockObject.position.x = this.blocks[blockId].position.x - SQUARE_SIZE - OUTLINE_SIZE;
-                    displacement.x = 0;
-                }
-                //check if collision on the left side of the player block
-               else if(Math.abs(this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.x) <= SQUARE_SIZE
-                    && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE + OUTLINE_SIZE && displacement.x < 0 ){
-                    blockObject.position.x = this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE;
-                    displacement.x = 0;
-                }
-                //check if collision on the bottom side of the player block
-              else if(Math.abs(blockObject.position.y + SQUARE_SIZE + OUTLINE_SIZE - this.blocks[blockId].position.y) <= SQUARE_SIZE
-                    && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y > 0){
-                    blockObject.position.y = this.blocks[blockId].position.y - SQUARE_SIZE - OUTLINE_SIZE;
-                    displacement.y = 0;
-                }
-
-                        //check if collision on the top side of the player block
-              else if(Math.abs(this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.y) <= SQUARE_SIZE
-                    && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y < 0){
-                    blockObject.position.y = this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE;
-                    displacement.y = 0;
-                }
-
-                //}
-            }
-        }
+        // for (let blockId in this.blocks) {
+        //     if (this.blocks.hasOwnProperty(blockId)) {
+        //         //if (blockId != blockObject.id) {
+        //
+        //        // check if collision on the right side of the player block
+        //         if(Math.abs(blockObject.position.x + (SQUARE_SIZE/2)  - this.blocks[blockId].position.x) <= (SQUARE_SIZE/2)
+        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < (SQUARE_SIZE/2) + OUTLINE_SIZE && displacement.x >0 ){
+        //             blockObject.position.x = this.blocks[blockId].position.x - (SQUARE_SIZE/2) - OUTLINE_SIZE;
+        //             displacement.x = 0;
+        //         }
+        //         //check if collision on the left side of the player block
+        //        else if(Math.abs(this.blocks[blockId].position.x + SQUARE_SIZE  - blockObject.position.x) <= SQUARE_SIZE
+        //             && Math.abs(blockObject.position.y - this.blocks[blockId].position.y) < SQUARE_SIZE + OUTLINE_SIZE &&
+        //             displacement.x < 0 ){
+        //             blockObject.position.x = this.blocks[blockId].position.x + SQUARE_SIZE + OUTLINE_SIZE;
+        //             displacement.x = 0;
+        //         }
+        //         //check if collision on the bottom side of the player block
+        //       else if(Math.abs(blockObject.position.y + SQUARE_SIZE  - this.blocks[blockId].position.y) <= SQUARE_SIZE
+        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y > 0){
+        //             blockObject.position.y = this.blocks[blockId].position.y - SQUARE_SIZE - OUTLINE_SIZE;
+        //             displacement.y = 0;
+        //         }
+        //
+        //                 //check if collision on the top side of the player block
+        //       else if(Math.abs(this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE - blockObject.position.y) <= SQUARE_SIZE
+        //             && Math.abs(blockObject.position.x - this.blocks[blockId].position.x) < SQUARE_SIZE + OUTLINE_SIZE && displacement.y < 0){
+        //             blockObject.position.y = this.blocks[blockId].position.y + SQUARE_SIZE + OUTLINE_SIZE;
+        //             displacement.y = 0;
+        //         }
+        //
+        //         //}
+        //     }
+        // }
         // left wall collision
         if(blockObject.position.x <= SQUARE_SIZE) {
             blockObject.position.x = SQUARE_SIZE;
