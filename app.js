@@ -10,6 +10,10 @@ const port = process.env.PORT || 8080;
 // handle express logic
 // send index on request for '/'
 app.get('/', function (req, res) {
+    res.sendFile(__dirname + '/public/home.html');
+});
+
+app.get('/index.html', function (req, res) {
     res.sendFile(__dirname + '/public/index.html');
 });
 
