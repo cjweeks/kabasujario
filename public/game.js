@@ -696,7 +696,7 @@ class ServerGameLogic extends GameLogic {
     }
 
     /**
-     * Generates a set of randomly places blocks
+     * Generates a set of randomly places blocks, as long as the blocks will not appear within the puzzle grid.
      * @param numBlocks The number of blocks to generate.
      */
 
