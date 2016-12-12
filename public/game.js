@@ -1924,6 +1924,8 @@ class Player {
 
     /**
      * Creates a new Player from a ServerPlayer or Player object.
+     * Note that the generated player will not have unique fields,
+     * as the references will still point to the original player.
      * @param player The player object to copy.
      * @returns {Player}
      */
