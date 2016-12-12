@@ -526,50 +526,63 @@ class GameLogic {
         this.previousFrameTime = time;
     }
 
-
-    // TODO finish writing for all secondary blocks in player
+    /**
+     * Checks for collisions between the given player and
+     * the free floating blocks.
+     * @param player
+     */
     checkCollisions(player) {
 
-        // check collisions for each free floating block
-        for (let blockId in this.blocks) {
-            if (this.blocks.hasOwnProperty(blockId)) {
-                // get a vector pointing from the object to the block
-                let direction = vector.subtract(this.blocks[blockId].position, player.position);
-                let closestEdge = edge.getEdgeFromDirection(direction);
+        // iterate through each block in the player
+        for (let i = 0; i < player.blocks.length; i++) {
 
-                // reset the position if a block is overlapping
-                if (closestEdge == edge.TOP && direction.y < SQUARE_SEPARATION) {
-                    player.position.y -= SQUARE_SEPARATION - direction.y;
-                } else if (closestEdge == edge.BOTTOM && direction.y > -SQUARE_SEPARATION) {
-                    player.position.y += SQUARE_SEPARATION + direction.y
-                } else if (closestEdge == edge.RIGHT && direction.x > -SQUARE_SEPARATION) {
-                    player.position.x += SQUARE_SEPARATION + direction.x;
-                } else if (closestEdge == edge.LEFT && direction.x < SQUARE_SEPARATION) {
-                    player.position.x -= SQUARE_SEPARATION - direction.x;
+            // get the absolute position of the current block
+            let blockPosition = vector.add(
+                player.position,
+                vector.scalarMultiply(player.blocks[i].position, SQUARE_SEPARATION)
+            );
+
+            // check collisions for each free floating block
+            for (let blockId in this.blocks) {
+                if (this.blocks.hasOwnProperty(blockId)) {
+                    // get a vector pointing from the object to the block
+                    let direction = vector.subtract(this.blocks[blockId].position, blockPosition);
+                    let closestEdge = edge.getEdgeFromDirection(direction);
+
+                    // reset the position if a block is overlapping
+                    if (closestEdge == edge.TOP && direction.y < SQUARE_SEPARATION) {
+                        player.position.y -= SQUARE_SEPARATION - direction.y;
+                    } else if (closestEdge == edge.BOTTOM && direction.y > -SQUARE_SEPARATION) {
+                        player.position.y += SQUARE_SEPARATION + direction.y
+                    } else if (closestEdge == edge.RIGHT && direction.x > -SQUARE_SEPARATION) {
+                        player.position.x += SQUARE_SEPARATION + direction.x;
+                    } else if (closestEdge == edge.LEFT && direction.x < SQUARE_SEPARATION) {
+                        player.position.x -= SQUARE_SEPARATION - direction.x;
+                    }
                 }
             }
-        }
 
-        // check collisions with the world borders
+            // check collisions with the world borders
 
-        // left wall collision
-        if(player.position.x <= SQUARE_SIZE) {
-            player.position.x = SQUARE_SIZE;
-        }
+            // left wall collision
+            if (blockPosition.x <= SQUARE_SIZE) {
+                player.position.x = SQUARE_SIZE;
+            }
 
-        // right wall collision
-        if(player.position.x >= world.width - SQUARE_SIZE) {
-            player.position.x = world.width - SQUARE_SIZE;
-        }
+            // right wall collision
+            if (blockPosition.x >= world.width - SQUARE_SIZE) {
+                player.position.x = world.width - SQUARE_SIZE;
+            }
 
-        // top wall collision
-        if(player.position.y <= SQUARE_SIZE) {
-            player.position.y = SQUARE_SIZE;
-        }
+            // top wall collision
+            if (blockPosition.y <= SQUARE_SIZE) {
+                player.position.y = SQUARE_SIZE;
+            }
 
-        // bottom wall collision
-        if(player.position.y >= world.height - SQUARE_SIZE) {
-            player.position.y = world.height - SQUARE_SIZE;
+            // bottom wall collision
+            if (blockPosition.y >= world.height - SQUARE_SIZE) {
+                player.position.y = world.height - SQUARE_SIZE;
+            }
         }
     }
 
