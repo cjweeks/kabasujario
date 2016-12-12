@@ -19,9 +19,10 @@ form {
     margin: 0 auto;
     width: 400px;
     padding: 1em;
-    border: 1px solid #CCC;
+    border: 4px solid #CCC;
     text-align: center;
     color: white;
+    font-family: 'Bungee', cursive;
 }
 
 label {
@@ -34,8 +35,9 @@ label {
     color: white;
     background-color: #207cca;
     border: 2px solid #207cca;
-    width: 100px;
+    width: 200px;
     margin: 20px;
+    font-family: 'Bungee', cursive;
 
 }
 
