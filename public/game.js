@@ -945,7 +945,7 @@ class ClientGameLogic extends GameLogic {
         this.camera = camera;
         console.log(this.camera);
 
-        // a reference to the two-dimensional context of the canvas ti render on
+        // a reference to the two-dimensional context of the canvas to render on
         this.context = {};
 
         // whether or not the position is locked by the server
@@ -1868,6 +1868,7 @@ class Player {
         this.score = 0;
 
         //initializes the player's name
+        //TODO: RIGHT NOW THIS IS JUST A PLACEHOLDER. THIS SHOULD BE INITALIZED WITH THE PLAYER'S ACTUAL NAME
         this.name = "Hi";
 
         // store the blocks a player has
@@ -1932,7 +1933,6 @@ class Player {
         let y = player.blocks[0].position.y * (SQUARE_SEPARATION);
         let xPos = player.position.x - player.size.x / 2 + x;
         let yPos = player.position.y - player.size.y / 2 + y;
-        console.log("Drawing player");
 
         context.fillStyle= "#999";
         context.strokeStyle="#999";
@@ -1953,14 +1953,38 @@ class Player {
         // context.strokeRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
         // context.fillRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
 
+        //Show player's name:
         context.font = "bold 18px verdana, sans-serif ";
         context.fillStyle = "#fff";
-        console.log("Filling Text");
         context.fillText(
             player.name,
             rectX + 5,
             rectY + 9,
         );
+
+
+
+        let wView = camera.wView;
+        let hView = camera.hView;
+
+
+        //TODO: PROBABLY NOT THE BEST PLACE FOR THIS:
+        //Show leaderboard
+        context.fillText(
+            "Leaderboard Goes here: ",
+            wView - 250,
+            hView - 675,
+        );
+
+        //Show player's score
+
+
+        context.fillText(
+            "Score: " + player.score,
+            wView - 150,
+            hView - 500,
+        );
+
     }
 
     /**
