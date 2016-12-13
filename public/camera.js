@@ -79,8 +79,6 @@ class Camera {
         this.worldRect = new Rectangle(0, 0, worldWidth, worldHeight);
 
     }
-
-
     /**
      * Updates the parameters of the camera to respond to changes in the window size.
      * @param canvasWidth the new canvas width.

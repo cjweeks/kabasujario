@@ -21,7 +21,6 @@ function getMousePosition(canvas, event) {
 const ATTACH_KEY_CODE = 67;
 
 window.onload = function () {
-
     // obtain a reference to the canvas
     let canvas = document.getElementById('canvas');
 

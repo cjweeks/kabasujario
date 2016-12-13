@@ -423,7 +423,7 @@ class GameLogic {
         // container holding blocks identified by their IDs
         this.blocks = {};
 
-        // TODO new colutions must be generated
+        // TODO new solutions must be generated
         // relative positions specifying the solution
         this.solution = [
             vector.construct(),
@@ -1263,9 +1263,6 @@ class ClientGameLogic extends GameLogic {
     }
 
 
-
-
-
     /**
      * Attempts to attach the candidate block to the the player.
      */
@@ -1867,7 +1864,11 @@ class Player {
             position: vector.construct()
         };
 
+        //initializes the player's score
         this.score = 0;
+
+        //initializes the player's name
+        this.name = "Hi";
 
         // store the blocks a player has
         this.blocks = [new Block(0, 0, this.color)];
@@ -1905,8 +1906,10 @@ class Player {
             let xOffset = player.blocks[i].position.x * (SQUARE_SEPARATION);
             let yOffset = player.blocks[i].position.y * (SQUARE_SEPARATION);
 
+
             let xPosition = player.position.x - player.size.x / 2 + xOffset;
             let yPosition = player.position.y - player.size.y / 2 + yOffset;
+
 
             drawRectangle(
                 context,
@@ -1919,7 +1922,45 @@ class Player {
                 player.blocks[i].color,
                 outlineColors
             );
+
+
+
         }
+
+
+        let x = player.blocks[0].position.x * (SQUARE_SEPARATION);
+        let y = player.blocks[0].position.y * (SQUARE_SEPARATION);
+        let xPos = player.position.x - player.size.x / 2 + x;
+        let yPos = player.position.y - player.size.y / 2 + y;
+        console.log("Drawing player");
+
+        context.fillStyle= "#999";
+        context.strokeStyle="#999";
+
+
+        // Set rectangle values
+        var rectX = xPos - camera.xView + 50;
+        var rectY = yPos - camera.yView + 40;
+        // var rectWidth = 50;
+        // var rectHeight = 22.5;
+        // var cornerRadius = 10;
+        //
+        // // Set  rounded corners
+        // context.lineJoin = "round";
+        // context.lineWidth = cornerRadius;
+        //
+        // // Change origin and dimensions to match true size (a stroke makes the shape a bit larger)
+        // context.strokeRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
+        // context.fillRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
+
+        context.font = "bold 18px verdana, sans-serif ";
+        context.fillStyle = "#fff";
+        console.log("Filling Text");
+        context.fillText(
+            player.name,
+            rectX + 5,
+            rectY + 9,
+        );
     }
 
     /**
@@ -1938,6 +1979,7 @@ class Player {
         copy.lastRenderedInputNumber = player.lastRenderedInputNumber;
         copy.lastInputTime = player.lastInputTime;
         copy.score = player.score;
+        copy.name = player.name;
         return copy;
     }
 }
