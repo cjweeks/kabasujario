@@ -57,6 +57,19 @@ const NUM_COLS = 11;
 // the maximum health value of a block
 const MAX_HEALTH = 100;
 
+// the width offset of the leaderboard from the right of the screen
+const LEADERBOARD_WIDTH_OFFSET = 300;
+
+// the height offset of the leaderboard from the top of the screen
+const LEADERRBOARD_HEIGHT_OFFSET = 50;
+
+// the height separation between elements in the leaderboard
+const LEADERBOARD_HEIGHT_SEPARATION = 20;
+
+// the maximum number of players shown on the leaderboard
+const LEADERBOARD_MAX_PLAYERS = 5;
+
+
 /**
  * Returns true if the code is being run on the server.
  * @returns {boolean}
@@ -738,7 +751,7 @@ class ServerGameLogic extends GameLogic {
                 // unlock the player's position, remove their blocks, and update their score
                 player.playerSocket.emit('set-position', {locked: false}, function () {});
                 player.blocks = player.blocks.slice(0, 1);
-                player.score++;
+                player.score += this.solution.length;
                 this.solutionOccupied = false;
                 // stop decrementing the transparency of the player's blocks
                 clearInterval(transparencyIntervalId);
@@ -1028,8 +1041,7 @@ class ClientGameLogic extends GameLogic {
         // determine if a block is close enough to the client player to attach
         this.determineCandidateBlock();
 
-        var leaderBoard = this.constructLeaderBoard();
-        console.log(leaderBoard);
+        let leaderBoard = this.constructLeaderBoard();
         this.drawLeaderBoard(leaderBoard);
         // draw the puzzle grid and solutions
         this.drawPuzzle();
@@ -1158,71 +1170,50 @@ class ClientGameLogic extends GameLogic {
     }
 
     constructLeaderBoard() {
-        var board = [];
-
-        // for (let playerId in this.players) {
-        //     if (this.players.hasOwnProperty(playerId)) {
-        //        board.push([this.players[playerId].name, this.players[playerId].score]);
-        //
-        //     }
-        // }
-
-
-
-        // for (let playerId in this.players) {
-        //     if (this.players.hasOwnProperty(playerId)) {
-        //         board.push("'" + this.players[playerId].name + " " +  this.players[playerId].score.toString() + "'");
-        //     }
-        // }
-        // console.log(board);
-        // console.log(board[0].split(" ")[0]);
+        let board = [];
 
         for (let playerId in this.players) {
-            console.log("GETS HERE");
             if (this.players.hasOwnProperty(playerId)) {
-                // console.log("NAME: " + this.players[playerId].name);
-                // console.log("SCORE: " + this.players[playerId].score);
                 board.push({
+                    playerId: playerId,
                     name: this.players[playerId].name,
                     score: this.players[playerId].score
                 });
             }
         }
-        // console.log("BOARD BEFORE SORT: " + board);
-        // console.log("BOARD BEFORE SORT NAME: " + board[0].name);
-        // console.log(board[0].split(" ")[0]);
 
-
-        board.sort(function (a, b) {
-            if ( a.score>b.score ) {
-                return 1;
-            }
-            if (a.score< b.score) {
+        board.sort(function (firstEntry, secondEntry) {
+            if (firstEntry.score > secondEntry.score) {
                 return -1;
             }
-            // a must be equal to b
+            if (firstEntry.score < secondEntry.score) {
+                return 1;
+            }
+            // first must be equal to second
             return 0;
         });
-
-        // function compare(a,b) {
-        //     if (a.last_nom < b.last_nom)
-        //         return -1;
-        //     if (a.last_nom > b.last_nom)
-        //         return 1;
-        //     return 0;
-        // }
-
-        // console.log("BOARD: " + board);
-
 
         return board;
     }
 
     drawLeaderBoard(leaderBoard){
-        for (let playerId in this.players) {
-            if (this.players.hasOwnProperty(playerId)) {
-                Player.drawLeaderBoard(leaderBoard, this.context, this.camera);
+        let wView = this.camera.wView;
+        let hView = this.camera.hView;
+
+        wView = this.camera.wView;
+        hView = this.camera.hView;
+
+
+        for(let i = 0; i < leaderBoard.length && i < LEADERBOARD_MAX_PLAYERS; i++){
+            this.context.fillStyle = 'rgba(255, 255, 255, 1)';
+            if (leaderBoard[i].playerId == this.clientPlayerId) {
+                this.context.fillStyle = SQUARE_COLOR_BLOCK;
             }
+            this.context.fillText(
+                i+1 + ". " + leaderBoard[i].name + ':' + leaderBoard[i].score,
+                wView - LEADERBOARD_WIDTH_OFFSET,
+                LEADERRBOARD_HEIGHT_OFFSET + LEADERBOARD_HEIGHT_SEPARATION * i,
+            );
         }
     }
 
@@ -1735,8 +1726,14 @@ class ClientGameLogic extends GameLogic {
         // update the oldest time still accurately recorded
         this.oldestUpdateTime = this.serverUpdates[0].time;
 
-        //Handle the latest positions from the server
-        //and make sure to correct our local predictions, making the server have final say.
+        // update player scores
+        for (let playerId in update.players) {
+            if (update.players.hasOwnProperty(playerId) && this.players.hasOwnProperty(playerId)) {
+                this.players[playerId].score = update.players[playerId].score;
+            }
+        }
+
+        // handle position updates from the server and interpolate with local positions
         this.processServerUpdatePosition();
     }
 }
@@ -2043,37 +2040,6 @@ class Player {
             wView - 250,
             hView - 675,
         );
-
-    }
-
-    static drawLeaderBoard(leaderBoard, context, camera){
-        let wView = camera.wView;
-        let hView = camera.hView;
-
-        console.log( "ENTRY: " +  leaderBoard[0].name);
-
-        //TODO: PROBABLY NOT THE BEST PLACE FOR THIS:
-        //Show leaderboard
-        context.fillText(
-            "Leaderboard Goes here: ",
-            wView - 250,
-            hView - 500,
-        );
-
-        wView = camera.wView;
-        hView = camera.hView;
-
-
-        for(var i = 0; i < leaderBoard.length && i < 5; i++){
-            console.log("i: " + i);
-            console.log("length: " + leaderBoard.length);
-
-            context.fillText(
-                i+1 + ". " + leaderBoard[i].name + ":" + leaderBoard[i].score,
-                wView - 250,
-                hView - 480,
-            );
-        }
 
     }
 
