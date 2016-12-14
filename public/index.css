@@ -19,7 +19,6 @@ form {
     margin: 0 auto;
     width: 400px;
     padding: 1em;
-    border: 4px solid #CCC;
     text-align: center;
     color: white;
     font-family: 'Bungee', cursive;
@@ -45,5 +44,13 @@ label {
     padding:8px 15px;
     background:rgba(211, 211, 211, 0.2);
     border:0px solid #dbdbdb;
+}
+
+.login {
+    display: inline-block;
+    border: 4px solid #CCC;
+    text-align: center;
+    font-family: 'Bungee', cursive;
+
 }
 
