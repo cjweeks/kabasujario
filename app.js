@@ -17,6 +17,10 @@ app.get('/index.html', function (req, res) {
     res.sendFile(__dirname + '/public/index.html');
 });
 
+app.post('/name', function(req, res) {
+    res.sendFile(_dirname + "/public/index.html");
+});
+
 // send public files on request
 app.use('/public', express.static(__dirname + '/public'));
 
