@@ -5,6 +5,7 @@
   "description": "Kabasujario",
   "main": "app.js",
   "dependencies": {
+    "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "socket.io": "^1.6.0",
     "uuid": "^3.0.1"

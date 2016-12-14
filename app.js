@@ -6,6 +6,13 @@ const io = require('socket.io')(server);
 const uuid = require('uuid/v1');
 const gameServer = require('./game-server.js');
 const port = process.env.PORT || 8080;
+const bodyParser = require('body-parser');
+
+// In order to read body of post request with user name
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+    extended: true
+}));
 
 // handle express logic
 // send index on request for '/'
@@ -18,6 +25,9 @@ app.get('/index.html', function (req, res) {
 });
 
 app.post('/name', function(req, res) {
+    // Print the name the user entered
+    // Not sure if this is useful at all, or where to pass this value..
+    console.log("Name: " + req.body.name);
     res.sendFile(__dirname + "/public/index.html");
 });
 
