@@ -51,6 +51,14 @@ label {
     border: 4px solid #CCC;
     text-align: center;
     font-family: 'Bungee', cursive;
+    margin: 0;
+    color: white;
 
+}
+
+.wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
