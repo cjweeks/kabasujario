@@ -526,6 +526,8 @@ class GameLogic {
         this.previousFrameTime = time;
     }
 
+
+
     /**
      * Checks for collisions between the given player and
      * the free floating blocks.
@@ -1026,9 +1028,9 @@ class ClientGameLogic extends GameLogic {
         // determine if a block is close enough to the client player to attach
         this.determineCandidateBlock();
 
-
-
-
+        var leaderBoard = this.constructLeaderBoard();
+        console.log(leaderBoard);
+        this.drawLeaderBoard(leaderBoard);
         // draw the puzzle grid and solutions
         this.drawPuzzle();
 
@@ -1041,8 +1043,6 @@ class ClientGameLogic extends GameLogic {
         // schedule the next update
         this.scheduleUpdate();
     }
-
-
 
 
     /**
@@ -1152,6 +1152,76 @@ class ClientGameLogic extends GameLogic {
         for (let playerId in this.players) {
             if (this.players.hasOwnProperty(playerId)) {
                 Player.draw(this.players[playerId], this.context, this.camera);
+                //console.log("PLAYER NAME   " + this.players[playerId].name);
+            }
+        }
+    }
+
+    constructLeaderBoard() {
+        var board = [];
+
+        // for (let playerId in this.players) {
+        //     if (this.players.hasOwnProperty(playerId)) {
+        //        board.push([this.players[playerId].name, this.players[playerId].score]);
+        //
+        //     }
+        // }
+
+
+
+        // for (let playerId in this.players) {
+        //     if (this.players.hasOwnProperty(playerId)) {
+        //         board.push("'" + this.players[playerId].name + " " +  this.players[playerId].score.toString() + "'");
+        //     }
+        // }
+        // console.log(board);
+        // console.log(board[0].split(" ")[0]);
+
+        for (let playerId in this.players) {
+            console.log("GETS HERE");
+            if (this.players.hasOwnProperty(playerId)) {
+                // console.log("NAME: " + this.players[playerId].name);
+                // console.log("SCORE: " + this.players[playerId].score);
+                board.push({
+                    name: this.players[playerId].name,
+                    score: this.players[playerId].score
+                });
+            }
+        }
+        // console.log("BOARD BEFORE SORT: " + board);
+        // console.log("BOARD BEFORE SORT NAME: " + board[0].name);
+        // console.log(board[0].split(" ")[0]);
+
+
+        board.sort(function (a, b) {
+            if ( a.score>b.score ) {
+                return 1;
+            }
+            if (a.score< b.score) {
+                return -1;
+            }
+            // a must be equal to b
+            return 0;
+        });
+
+        // function compare(a,b) {
+        //     if (a.last_nom < b.last_nom)
+        //         return -1;
+        //     if (a.last_nom > b.last_nom)
+        //         return 1;
+        //     return 0;
+        // }
+
+        // console.log("BOARD: " + board);
+
+
+        return board;
+    }
+
+    drawLeaderBoard(leaderBoard){
+        for (let playerId in this.players) {
+            if (this.players.hasOwnProperty(playerId)) {
+                Player.drawLeaderBoard(leaderBoard, this.context, this.camera);
             }
         }
     }
@@ -1967,25 +2037,47 @@ class Player {
         let wView = camera.wView;
         let hView = camera.hView;
 
+        //Show player's score
+        context.fillText(
+            "Score: " + player.score,
+            wView - 250,
+            hView - 675,
+        );
+
+    }
+
+    static drawLeaderBoard(leaderBoard, context, camera){
+        let wView = camera.wView;
+        let hView = camera.hView;
+
+        console.log( "ENTRY: " +  leaderBoard[0].name);
 
         //TODO: PROBABLY NOT THE BEST PLACE FOR THIS:
         //Show leaderboard
         context.fillText(
             "Leaderboard Goes here: ",
             wView - 250,
-            hView - 675,
-        );
-
-        //Show player's score
-
-
-        context.fillText(
-            "Score: " + player.score,
-            wView - 150,
             hView - 500,
         );
 
+        wView = camera.wView;
+        hView = camera.hView;
+
+
+        for(var i = 0; i < leaderBoard.length && i < 5; i++){
+            console.log("i: " + i);
+            console.log("length: " + leaderBoard.length);
+
+            context.fillText(
+                i+1 + ". " + leaderBoard[i].name + ":" + leaderBoard[i].score,
+                wView - 250,
+                hView - 480,
+            );
+        }
+
     }
+
+
 
     /**
      * Creates a new Player from a ServerPlayer or Player object.
