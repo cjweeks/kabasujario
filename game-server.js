@@ -1,5 +1,5 @@
 
-const GameObjects = require('./public/game.js'); // TODO xxx changed from game
+const GameObjects = require('./public/game-compiled.js'); // TODO xxx changed from game
 const ServerGameLogic = GameObjects.ServerGameLogic;
 const Player = GameObjects.Player;
 const Block = GameObjects.Block;

@@ -11,7 +11,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 // The maximum number of players that may exist in one gameLogic gameLogic
-var MAX_PLAYERS_PER_GAME = 10;
+var MAX_PLAYERS_PER_GAME = 7;
 
 // The refresh rate of the standard timers (in ms)
 var TIMER_PERIOD = 4;
@@ -80,7 +80,7 @@ var LEADERRBOARD_HEIGHT_OFFSET = 50;
 var LEADERBOARD_HEIGHT_SEPARATION = 20;
 
 // the maximum number of players shown on the leaderboard
-var LEADERBOARD_MAX_PLAYERS = 5;
+var LEADERBOARD_MAX_PLAYERS = MAX_PLAYERS_PER_GAME;
 
 // the amount to multiply the number of solution blocks by to obtain a score increment
 var SCORE_SCALE_FACTOR = 10;
@@ -2114,9 +2114,6 @@ var Player = function () {
 
             var wView = camera.wView;
             var hView = camera.hView;
-
-            //Show player's score
-            context.fillText("Score: " + player.score, wView - 250, hView - 675);
         }
 
         /**

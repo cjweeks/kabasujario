@@ -4,7 +4,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var GameObjects = require('./public/game.js'); // TODO xxx changed from game
+var GameObjects = require('./public/game-compiled.js'); // TODO xxx changed from game
 var ServerGameLogic = GameObjects.ServerGameLogic;
 var Player = GameObjects.Player;
 var Block = GameObjects.Block;

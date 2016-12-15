@@ -1,7 +1,7 @@
 
 
 // The maximum number of players that may exist in one gameLogic gameLogic
-const MAX_PLAYERS_PER_GAME = 10;
+const MAX_PLAYERS_PER_GAME = 7;
 
 // The refresh rate of the standard timers (in ms)
 const TIMER_PERIOD = 4;
@@ -70,7 +70,7 @@ const LEADERRBOARD_HEIGHT_OFFSET = 50;
 const LEADERBOARD_HEIGHT_SEPARATION = 20;
 
 // the maximum number of players shown on the leaderboard
-const LEADERBOARD_MAX_PLAYERS = 5;
+const LEADERBOARD_MAX_PLAYERS = MAX_PLAYERS_PER_GAME;
 
 // the amount to multiply the number of solution blocks by to obtain a score increment
 const SCORE_SCALE_FACTOR = 10;
@@ -2211,13 +2211,6 @@ class Player {
 
         let wView = camera.wView;
         let hView = camera.hView;
-
-        //Show player's score
-        context.fillText(
-            "Score: " + player.score,
-            wView - 250,
-            hView - 675,
-        );
 
     }
 

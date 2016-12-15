@@ -6,7 +6,7 @@ var app = express();
 var server = http.createServer(app);
 var io = require('socket.io')(server);
 var uuid = require('uuid/v1');
-var gameServer = require('./game-server.js'); // TODO xxx
+var gameServer = require('./game-server-compiled.js'); // TODO xxx
 var port = process.env.PORT || 8080;
 var bodyParser = require('body-parser');
 
