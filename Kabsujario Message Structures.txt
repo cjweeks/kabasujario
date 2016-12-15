@@ -40,3 +40,7 @@ attach {
 detach {
     playerId: --
 }
+
+solution-change {
+    index: -- // the index of the new solution in the 'possibleSolutions' array
+}

@@ -69,6 +69,9 @@ const LEADERBOARD_HEIGHT_SEPARATION = 20;
 // the maximum number of players shown on the leaderboard
 const LEADERBOARD_MAX_PLAYERS = 5;
 
+// the amount to multiply the number of solution blocks by to obtain a score increment
+const SCORE_SCALE_FACTOR = 10;
+
 
 /**
  * Returns true if the code is being run on the server.
@@ -436,17 +439,107 @@ class GameLogic {
         // container holding blocks identified by their IDs
         this.blocks = {};
 
-        // TODO new solutions must be generated
-        // relative positions specifying the solution
-        this.solution = [
-            vector.construct(),
-            vector.construct(0, 1),
-            vector.construct(0, 2),
-            vector.construct(0, 3),
-            vector.construct(1, 0),
-            vector.construct(2, 0),
-            vector.construct(2, 1)
+        // create a list of possible solutions from which to choose
+        this.possibleSolutions = [
+            {
+                blocks: [
+                    vector.construct(),
+                    vector.construct(0, 1),
+                    vector.construct(0, 2),
+                    vector.construct(0, 3),
+                    vector.construct(1, 0),
+                    vector.construct(2, 0),
+                    vector.construct(2, 1)
+                ],
+                width: 0,
+                height: 0
+            },
+            {
+                blocks: [
+                    vector.construct(),
+                    vector.construct(0, 1),
+                    vector.construct(1, 1),
+                    vector.construct(1, 0),
+                    vector.construct(1, 2),
+                    vector.construct(2, 1),
+                    vector.construct(2, 2)
+                ],
+                width: 0,
+                height: 0
+            },
+            {
+                blocks: [
+                    vector.construct(0, 1),
+                    vector.construct(0, 2),
+                    vector.construct(0, 3),
+                    vector.construct(0, 4),
+                    vector.construct(2, 0),
+                    vector.construct(3, 0),
+                    vector.construct(3, 1),
+                    vector.construct(3, 2),
+                    vector.construct(2, 2),
+                    vector.construct(1, 2)
+                ],
+                width: 0,
+                height: 0
+            },
+            {
+                blocks: [
+                    vector.construct(1, 0),
+                    vector.construct(1, 1),
+                    vector.construct(1, 2),
+                    vector.construct(1, 3),
+                    vector.construct(2, 1),
+                    vector.construct(2, 2),
+                    vector.construct(2, 3),
+                    vector.construct(3, 2),
+                    vector.construct(0, 3),
+                    vector.construct(0, 4),
+                    vector.construct(0, 5)
+                ],
+                width: 0,
+                height: 0
+            },
+            {
+                blocks: [
+                    vector.construct(0, 0),
+                    vector.construct(1, 0),
+                    vector.construct(2, 0),
+                    vector.construct(3, 0),
+                    vector.construct(4, 0),
+                    vector.construct(5, 0),
+                    vector.construct(1, 1),
+                    vector.construct(1, 2),
+                    vector.construct(2, 2),
+                    vector.construct(3, 2),
+                    vector.construct(3, 1)
+                ],
+                width: 0,
+                height: 0
+            },
+            {
+                blocks: [
+                    vector.construct(0, 0),
+                    vector.construct(0, 1),
+                    vector.construct(0, 2),
+                    vector.construct(0, 3),
+                    vector.construct(0, 4),
+                    vector.construct(1, 3),
+                    vector.construct(1, 4),
+                    vector.construct(1, 5),
+                    vector.construct(1, 6),
+                ],
+                width: 0,
+                height: 0
+            }
         ];
+
+        // get a random solution from the above array (note this will change quickly on the client side when the
+        // server informs the client of the actual current solution).
+        this.solution = this.possibleSolutions[Math.floor(Math.random() * this.possibleSolutions.length)];
+
+        // determine the height and width of each solution
+        this.setSolutionDimensions();
 
         // whether or not a player has locked to the solution
         this.solutionOccupied = false;
@@ -477,6 +570,27 @@ class GameLogic {
 
         // start the main timer
         this.startTimer();
+    }
+
+    /**
+     * Sets the height and width attributes of each solution in possibleSolutions.
+     */
+    setSolutionDimensions() {
+        for (let i = 0; i < this.possibleSolutions.length; i++) {
+            let solution = this.possibleSolutions[i];
+            let xMax = 0;
+            let yMax = 0;
+            for (let j = 0; j < solution.blocks.length; j++) {
+                if (solution.blocks[j].x > xMax) {
+                    xMax = solution.blocks[j].x;
+                }
+                if (solution.blocks[j].y > yMax) {
+                    yMax = solution.blocks[j].y;
+                }
+            }
+            solution.width = xMax + 1;
+            solution.height = yMax + 1;
+        }
     }
 
     /**
@@ -751,7 +865,21 @@ class ServerGameLogic extends GameLogic {
                 // unlock the player's position, remove their blocks, and update their score
                 player.playerSocket.emit('set-position', {locked: false}, function () {});
                 player.blocks = player.blocks.slice(0, 1);
-                player.score += this.solution.length;
+                player.score += this.solution.blocks.length * SCORE_SCALE_FACTOR;
+
+                // select a new solution and emit a solution changed event
+                let newSolutionIndex = Math.floor(Math.random() * this.possibleSolutions.length);
+                for (let playerId in this.players) {
+                    if (this.players.hasOwnProperty(playerId)) {
+                        let player = this.players[playerId];
+                        if (player.playerSocket) {
+                            player.playerSocket.emit('solution-changed', {solutionIndex: newSolutionIndex});
+                        } else {
+                            console.log('Error: could not find player playerSocket when updating solution');
+                        }
+                    }
+                }
+
                 this.solutionOccupied = false;
                 // stop decrementing the transparency of the player's blocks
                 clearInterval(transparencyIntervalId);
@@ -784,25 +912,25 @@ class ServerGameLogic extends GameLogic {
             if (this.players.hasOwnProperty(playerId)) {
                 // check the position of the player's primary block
                 let playerPosition = this.players[playerId].position;
-                for (let i = 0; i < this.solution.length; i++) {
+                for (let i = 0; i < this.solution.blocks.length; i++) {
 
                     // determine where the solution block is
                     let x = world.width / 2 - NUM_COLS * SQUARE_SEPARATION + SQUARE_SEPARATION / 2;
                     let y = world.height / 2 - NUM_ROWS * SQUARE_SEPARATION + SQUARE_SEPARATION / 2;
 
-                    let xOffset = Math.floor((NUM_COLS - this.solutionWidth) / 2) * SQUARE_SEPARATION;
-                    let yOffset = Math.ceil((NUM_ROWS - this.solutionHeight) / 2) * SQUARE_SEPARATION;
+                    let xOffset = Math.floor((NUM_COLS - this.solution.width) / 2) * SQUARE_SEPARATION;
+                    let yOffset = Math.ceil((NUM_ROWS - this.solution.height) / 2) * SQUARE_SEPARATION;
 
                     let blockPosition = vector.construct(
-                        x + xOffset + this.solution[i].x * SQUARE_SEPARATION,
-                        y + yOffset + this.solution[i].y * SQUARE_SEPARATION
+                        x + xOffset + this.solution.blocks[i].x * SQUARE_SEPARATION,
+                        y + yOffset + this.solution.blocks[i].y * SQUARE_SEPARATION
                     );
 
                     // find the distance between the solution block and the player's primary block
                     let distance = vector.magnitude(vector.subtract(playerPosition, blockPosition));
 
                     // if the distance is small enough, set the required values and exit the inner loop
-                    if (distance < MAX_SOLUTION_DISTANCE && this.checkSolutionValidity(playerId, this.solution[i])) {
+                    if (distance < MAX_SOLUTION_DISTANCE && this.checkSolutionValidity(playerId, this.solution.blocks[i])) {
                         result.playerId = playerId;
                         result.position = blockPosition;
                         break;
@@ -832,7 +960,7 @@ class ServerGameLogic extends GameLogic {
         let playerBlocks = this.players[playerId].blocks;
 
         // checks the lengths of the solution and the player's blocks
-        if (playerBlocks.length != this.solution.length) {
+        if (playerBlocks.length != this.solution.blocks.length) {
             return false;
         }
 
@@ -863,8 +991,8 @@ class ServerGameLogic extends GameLogic {
             // get the current player block's position relative to 0, 0
             let playerBlockPosition = vector.add(playerBlocks[i].position, offset);
             let found = false;
-            for (let j = 0; j < this.solution.length; j++) {
-                if (vector.isEqual(playerBlockPosition, this.solution[j])) {
+            for (let j = 0; j < this.solution.blocks.length; j++) {
+                if (vector.isEqual(playerBlockPosition, this.solution.blocks[j])) {
                     found = true;
                     break;
                 }
@@ -1116,15 +1244,15 @@ class ClientGameLogic extends GameLogic {
         let x = world.width / 2 - NUM_COLS * SQUARE_SEPARATION - this.camera.xView;
         let y = world.height / 2 - NUM_ROWS * SQUARE_SEPARATION - this.camera.yView;
 
-        let xOffset = Math.floor((NUM_COLS - this.solutionWidth) / 2) * SQUARE_SEPARATION;
-        let yOffset = Math.ceil((NUM_ROWS - this.solutionHeight) / 2) * SQUARE_SEPARATION;
+        let xOffset = Math.floor((NUM_COLS - this.solution.width) / 2) * SQUARE_SEPARATION;
+        let yOffset = Math.ceil((NUM_ROWS - this.solution.height) / 2) * SQUARE_SEPARATION;
 
         // draw the solution
         this.context.fillStyle = SQUARE_COLOR_SOLUTION;
-        for (let i = 0; i < this.solution.length; i++) {
+        for (let i = 0; i < this.solution.blocks.length; i++) {
             this.context.fillRect(
-                x + xOffset + this.solution[i].x * SQUARE_SEPARATION,
-                y + yOffset + this.solution[i].y * SQUARE_SEPARATION,
+                x + xOffset + this.solution.blocks[i].x * SQUARE_SEPARATION,
+                y + yOffset + this.solution.blocks[i].y * SQUARE_SEPARATION,
                 SQUARE_SEPARATION,
                 SQUARE_SEPARATION
             );
@@ -1608,6 +1736,8 @@ class ClientGameLogic extends GameLogic {
         // handle the reception of a server update
         this.playerSocket.on('server-update', this.onServerUpdate.bind(this));
 
+        this.playerSocket.on('solution-changed', this.onSolutionChanged.bind(this));
+
         // handle the reception of a position set command
         this.playerSocket.on('set-position', this.onSetPosition.bind(this));
 
@@ -1635,6 +1765,13 @@ class ClientGameLogic extends GameLogic {
         callback();
     }
 
+    /**
+     * Updates the client's current solution from server data.
+     * @param data The data from te server, indicating teh new solution index.
+     */
+    onSolutionChanged(data) {
+        this.solution = this.possibleSolutions[data.solutionIndex];
+    }
     /**
      * Responds to a player added event by adding the new
      * player to the list.
@@ -1674,6 +1811,11 @@ class ClientGameLogic extends GameLogic {
 
         // assign the list of blocks
         this.blocks = data.blocks;
+
+        // assign the current solution
+        this.solution = this.possibleSolutions[data.solutionIndex];
+        console.log(data.solutionIndex);
+        console.log(this.solution);
 
         // set the camera to track the client player
         this.camera.setTarget(this.clientPlayer, this.canvas.width / 2, this.canvas.height / 2);

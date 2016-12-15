@@ -272,6 +272,7 @@ exports.findGame = function(playerSocket) {
         clientPlayerId: playerSocket.clientPlayerId,
         serverTime: game.gameLogic.serverTime,
         players: playersLightCopy,
-        blocks: game.gameLogic.blocks
+        blocks: game.gameLogic.blocks,
+        solutionIndex: game.gameLogic.possibleSolutions.indexOf(game.gameLogic.solution)
     });
 };
