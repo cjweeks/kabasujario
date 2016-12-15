@@ -793,7 +793,7 @@ class ServerGameLogic extends GameLogic {
 
             let numNewBlocks = Math.floor(Math.random() * (MAX_BLOCKS_GENERATED - numCurrentBlocks));
             console.log('generating ' + numNewBlocks + ' blocks');
-            this.generateBlocks();
+            this.generateBlocks(numNewBlocks);
         }.bind(this), BLOCK_GENERATION_PERIOD)
     }
 
