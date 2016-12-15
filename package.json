@@ -16,7 +16,7 @@
     "babel-preset-es2015": "^6.18.0"
   },
   "scripts": {
-    "heroku-postbuild": "build-heroku.sh",
+    "post-install": "build-heroku.sh",
     "start": "node -r babel-register app.js",
     "build": "build.sh",
     "clean": "rm -rf *-compiled.js *.js.map public/*-compiled.js public/*.js.map",
