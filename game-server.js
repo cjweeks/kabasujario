@@ -139,7 +139,7 @@ class Game {
         this.playerSockets = {};
         this.numPlayers = 0;
         this.gameLogic = new ServerGameLogic(this);
-        this.gameLogic.generateBlocks(numBlocks)
+        this.gameLogic.generateBlocks(numBlocks);
     }
 
     /**

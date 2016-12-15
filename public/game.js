@@ -39,6 +39,9 @@ const SQUARE_OUTLINE_COLOR_DEFAULT = 'rgba(255, 255, 255, 1)';
 // the color representing the active edge of a player (the edge that may attach to a block)
 const SQUARE_OUTLINE_COLOR_ACTIVE = 'rgba(255, 40, 242, 1)';
 
+// the maximum number of blocks a player may attach to
+const MAX_PLAYER_BLOCKS = 15;
+
 // the maximum distance a player can be from the solution to become valid
 const MAX_SOLUTION_DISTANCE = SQUARE_SIZE / 2;
 
@@ -71,6 +74,11 @@ const LEADERBOARD_MAX_PLAYERS = 5;
 
 // the amount to multiply the number of solution blocks by to obtain a score increment
 const SCORE_SCALE_FACTOR = 10;
+
+// the period at which to generate new random blocks
+const BLOCK_GENERATION_PERIOD = 30000;
+
+const MAX_BLOCKS_GENERATED = 180;
 
 
 /**
@@ -695,22 +703,22 @@ class GameLogic {
 
             // left wall collision
             if (blockPosition.x <= SQUARE_SIZE) {
-                player.position.x = SQUARE_SIZE;
+                player.position.x = SQUARE_SIZE + player.position.x - blockPosition.x;
             }
 
             // right wall collision
             if (blockPosition.x >= world.width - SQUARE_SIZE) {
-                player.position.x = world.width - SQUARE_SIZE;
+                player.position.x = world.width - SQUARE_SIZE - (blockPosition.x - player.position.x);
             }
 
             // top wall collision
             if (blockPosition.y <= SQUARE_SIZE) {
-                player.position.y = SQUARE_SIZE;
+                player.position.y = SQUARE_SIZE + player.position.y - blockPosition.y;
             }
 
             // bottom wall collision
             if (blockPosition.y >= world.height - SQUARE_SIZE) {
-                player.position.y = world.height - SQUARE_SIZE;
+                player.position.y = world.height - SQUARE_SIZE - (blockPosition.y - player.position.y);
             }
         }
     }
@@ -768,6 +776,25 @@ class ServerGameLogic extends GameLogic {
         this.inputs = [];
         this.serverTime = 0;
         this.previousState = {};
+        this.startBlockGeneration();
+    }
+
+    /**
+     * Generates a bounded random number of blocks on a timer
+     */
+    startBlockGeneration() {
+        setInterval(function () {
+            let numCurrentBlocks = 0;
+            for (let blockId in this.blocks) {
+                if (this.blocks.hasOwnProperty(blockId)) {
+                    numCurrentBlocks++;
+                }
+            }
+
+            let numNewBlocks = Math.floor(Math.random() * (MAX_BLOCKS_GENERATED - numCurrentBlocks));
+            console.log('generating ' + numNewBlocks + ' blocks');
+            this.generateBlocks();
+        }.bind(this), BLOCK_GENERATION_PERIOD)
     }
 
     /**
@@ -880,6 +907,7 @@ class ServerGameLogic extends GameLogic {
                     }
                 }
 
+                this.solution = this.possibleSolutions[newSolutionIndex];
                 this.solutionOccupied = false;
                 // stop decrementing the transparency of the player's blocks
                 clearInterval(transparencyIntervalId);
@@ -1460,7 +1488,8 @@ class ClientGameLogic extends GameLogic {
             !this.clientPlayer.candidateBlockId ||
             !this.clientPlayer.activeEdge ||
             !(this.clientPlayer.activeBlockIndex >= 0) ||
-            !this.blocks[this.clientPlayer.candidateBlockId]) {
+            !this.blocks[this.clientPlayer.candidateBlockId] ||
+            this.clientPlayer.blocks.length > MAX_PLAYER_BLOCKS) {
             return;
         }
 
@@ -1736,6 +1765,7 @@ class ClientGameLogic extends GameLogic {
         // handle the reception of a server update
         this.playerSocket.on('server-update', this.onServerUpdate.bind(this));
 
+        // handle the altering of a solution
         this.playerSocket.on('solution-changed', this.onSolutionChanged.bind(this));
 
         // handle the reception of a position set command
@@ -1770,6 +1800,7 @@ class ClientGameLogic extends GameLogic {
      * @param data The data from te server, indicating teh new solution index.
      */
     onSolutionChanged(data) {
+        console.log('solution changed to ' + data.solutionIndex);
         this.solution = this.possibleSolutions[data.solutionIndex];
     }
     /**
@@ -1843,7 +1874,7 @@ class ClientGameLogic extends GameLogic {
      * in the buffer and processing the update data.
      * @param update the server update data.
      */
-    onServerUpdate(update){
+     onServerUpdate(update){
 
         // store the server time (note this is affected by latency)
         this.serverTime = update.time;
