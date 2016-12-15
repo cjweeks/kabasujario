@@ -56,6 +56,10 @@ label {
 
 }
 
+#name {
+    color:white;
+}
+
 .wrap {
     display: flex;
     justify-content: center;

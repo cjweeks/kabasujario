@@ -9,7 +9,15 @@ Connor Weeks, Alex Kasparek, Kunal Shah
 Clone the repository and install the node modules: `npm install`.
 
 ## Transpiling
-This project uses ECMAScript 6 and must be transpiled in order to run.  This can be done automatically using a
+
+Deploying to Heroku proved quite difficult, since this project is written in ECMAScript 6.  therefore, the transpiled
+Javascript files have been included in this repository for simplicity.  The program may be run using two methods:
+
+If you wish to use the transpiled code, simply execute `node app-compiled.js`, and the server will start on port 8080.
+
+If you wish to use the original ECMAScript 6 code omn the server side, you must alter `game-server.js` and `app.js`,
+change any references to `*.compiled.js` files to the original `*.js` files.  Then , you must transpile the source 
+code in order to run.  This can be done automatically using a
 file watcher in an IDE or manually using the `build.sh` script provided.  To run this script, simply execute `npm run build`.
 This will generate a set of `*-compiled.js` files as well as a set of `*.js.map` files, which are used on the client side.
 To remove these generated files, simply execute `npm run clean`.
