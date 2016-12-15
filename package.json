@@ -18,7 +18,7 @@
   "scripts": {
     "heroku-postbuild": "./build.sh",
     "start": "node -r babel-register app.js",
-    "build": "./build.sh",
+    "build": "build.sh",
     "clean": "rm -rf *-compiled.js *.js.map public/*-compiled.js public/*.js.map",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
