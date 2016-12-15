@@ -1782,6 +1782,10 @@ class ClientGameLogic extends GameLogic {
 
         // handle the reception of a ping
         this.playerSocket.on('manual-ping', this.onPing.bind(this));
+
+        let name = localStorage.getItem('name');
+        this.playerSocket.emit('playername', {name: name});
+        console.log(name);
     }
 
     /**
@@ -1903,6 +1907,7 @@ class ClientGameLogic extends GameLogic {
         for (let playerId in update.players) {
             if (update.players.hasOwnProperty(playerId) && this.players.hasOwnProperty(playerId)) {
                 this.players[playerId].score = update.players[playerId].score;
+                this.players[playerId].name = update.players[playerId].name;
             }
         }
 
@@ -2109,7 +2114,7 @@ class Player {
 
         //initializes the player's name
         //TODO: RIGHT NOW THIS IS JUST A PLACEHOLDER. THIS SHOULD BE INITALIZED WITH THE PLAYER'S ACTUAL NAME
-        this.name = "Hi";
+        this.name = "";
 
         // store the blocks a player has
         this.blocks = [new Block(0, 0, this.color)];

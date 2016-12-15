@@ -17,7 +17,7 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 // handle express logic
 // send index on request for '/'
 app.get('/', function (req, res) {
-    res.sendFile(__dirname + '/public/home.html');
+    res.sendFile(__dirname + '/public/index.html');
 });
 
 app.get('/index.html', function (req, res) {
@@ -28,7 +28,7 @@ app.post('/name', function(req, res) {
     // Print the name the user entered
     // Not sure if this is useful at all, or where to pass this value..
     console.log("Name: " + req.body.name);
-    res.sendFile(__dirname + "/public/index.html");
+    res.sendFile(__dirname + "/game.html");
 });
 
 // send public files on request
@@ -76,6 +76,14 @@ io.on('connection', function (clientSocket) {
 
         } else {
             console.log('Tried to remove player ' + clientSocket.clientPlayerId + ' but could not find associated game.');
+        }
+    });
+
+    clientSocket.on('playername', function(data){
+
+        if(clientSocket.game){
+            clientSocket.game.gameLogic.players[clientSocket.clientPlayerId].name = data.name;
+            console.log("NAME: " + data.name);
         }
     });
 });
