@@ -4,7 +4,7 @@ const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server);
 const uuid = require('uuid/v1');
-const gameServer = require('./game-server.js');
+const gameServer = require('./game-server.js'); // TODO xxx
 const port = process.env.PORT || 8080;
 const bodyParser = require('body-parser');
 
