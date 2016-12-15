@@ -22,7 +22,8 @@ To play the game, simply type in the url of the game in the browser (port 8080).
 
 Once you have joined the game you will be represented by a blue square. You can take the following actions:
 
-- Move: position your mouse cursor on the screen to move in that direction
+- Move: position your mouse cursor on the screen to move in that direction.
+- Freeze: You can hit the spacebar and your block will stop moving. Press the spacebar a second time to move again.
 - Attach to blocks: press 'c' when near a light blue stationary block object
 - Detach from blocks: press 'shift + c' to detach the most recent block you have attached to (i.e. they pop off in LIFO order)
 - Complete the puzzle piece: In the center of the map there is a grid with the shape of a puzzle piece outlined. If you attach to blocks in the same configuration as the puzzle piece, then hover over the puzzle piece outline, your shape will be reset and you will be awarded some amount of points
