@@ -3,8 +3,8 @@
 .idea/
 
 # Compiled files
-*-compiled.js
-*.js.map
+#*-compiled.js
+#*.js.map
 
 # Logs
 logs

@@ -16,7 +16,6 @@
     "babel-preset-es2015": "^6.18.0"
   },
   "scripts": {
-    "heroku-postbuild": "ls && ./node_modules/.bin/babel --source-maps --out-file public/camera-compiled.js --presets es2015 public/camera.js && ./node_modules/.bin/babel --source-maps --out-file public/client-compiled.js --presets es2015 public/client.js && ./node_modules/.bin/babel --source-maps --out-file public/game-compiled.js --presets es2015 public/game.js",
     "start": "node -r babel-register app.js",
     "build": "build.sh",
     "clean": "rm -rf *-compiled.js *.js.map public/*-compiled.js public/*.js.map",
