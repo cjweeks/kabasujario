@@ -13,7 +13,7 @@
 <body class="wrap">
 <div class="login">
     <h1>Kabasujario</h1>
-    <form method="post" action="/name">
+    <form method="post" action="/game">
         <label for="name">Name:</label>
         <input class="search" type="text" id="name" name="name">
         <br>
@@ -23,18 +23,18 @@
 </div>
 
 <script>
-
-    var button = document.getElementById('button');
-    button.addEventListener('click', function(){
-        localStorage.clear();
-
+    document.getElementById('button').addEventListener('click', function(event){
+        var name = document.getElementById('name').value;
+        if (!name) {
+            event.preventDefault();
+            return;
+        }
         if(localStorage){
-            var name = document.getElementById('name').value;
+            localStorage.clear();
             localStorage.setItem('name', name);
             console.log('NAME: ' + localStorage.getItem('name'));
         }
     });
-
 </script>
 
 </body>

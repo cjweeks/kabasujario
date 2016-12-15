@@ -24,7 +24,12 @@ app.get('/index.html', function (req, res) {
     res.sendFile(__dirname + '/public/index.html');
 });
 
-app.post('/name', function(req, res) {
+app.get('/game.html', function (req, res) {
+    res.redirect(__dirname + '/');
+});
+
+app.post('/game', function(req, res) {
+    console.log('got post req');
     // Print the name the user entered
     // Not sure if this is useful at all, or where to pass this value..
     console.log("Name: " + req.body.name);
